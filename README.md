@@ -1,6 +1,7 @@
-# Alfresco User API
+# UserAlfresco API
 
 เอกสาร flow แบบ Step 1, 2, 3: [FLOW_STEPS.md](FLOW_STEPS.md)
+โครงสร้างโปรเจคแบบ backend modules: [PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md)
 
 โปรเจคนี้เป็น API Gateway แยกจาก `alfresco-api` เดิม สำหรับกรณีที่ต้องการให้ user แต่ละคนเห็น folder/file ตามสิทธิ์ใน Alfresco จริง
 
@@ -22,7 +23,7 @@ Node.js เรียก Alfresco CMIS ด้วยสิทธิ์ของ us
 ## Setup
 
 ```bash
-cd C:\xampp\htdocs\alfresco-user-api
+cd C:\xampp\htdocs\UserAlfresco-api
 copy .env.example .env
 npm install
 npm run dev
@@ -103,4 +104,6 @@ Authorization: Bearer <accessToken>
 - ถ้าใช้งานจริงควรเปิดผ่าน HTTPS
 - ถ้ามีหลาย server ควรเปลี่ยนจาก memory session เป็น Redis/session store
 - permission ที่ได้จะขึ้นกับ Alfresco user ที่ login
+
+
 

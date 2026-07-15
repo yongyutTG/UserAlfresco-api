@@ -1,7 +1,7 @@
 {
-  "name": "alfresco-user-api",
+  "name": "useralfresco-api",
   "version": "1.0.0",
-  "description": "User-based Alfresco API Gateway using Alfresco permissions",
+  "description": "UserAlfresco API Gateway using Alfresco permissions",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",

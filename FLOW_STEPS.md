@@ -1,542 +1,474 @@
 # Code Flow Steps
 
-เอกสารนี้อธิบายว่าโค้ดแต่ละส่วนเรียก function ไหนต่อ เป็นลำดับ Step 1, 2, 3 เพื่ออ่านคู่กับ `server.js` และ `public/frontend/index.html`
+เอกสารนี้อธิบายว่า request แต่ละเส้นวิ่งผ่านไฟล์ไหนและ function ไหน ตามโครงสร้างใหม่แบบ backend modules
 
-## ภาพรวม
+## Flow 1: Server Start
 
-```text
-Frontend: public/frontend/index.html
-        |
-        | fetch / window.open
-        v
-Backend: server.js
-        |
-        | axios + CMIS Browser Binding
-        v
-Alfresco Server
+Step 1: รันคำสั่ง
+
+```bash
+npm run dev
 ```
 
-Backend เรียก Alfresco ด้วยสิทธิ์ของ user ที่ login อยู่ โดยเก็บข้อมูล session ไว้ใน `userSessions` ฝั่ง Node.js
+Step 2: `server.js` ถูกเรียก
 
-## Flow 1: เปิดหน้า Frontend
-
-URL:
-
-```text
-http://localhost:3001/frontend/
+```js
+const app = require("./src/app");
+const config = require("./src/config/env");
 ```
 
-Step 1: Browser โหลดไฟล์
+Step 3: `src/config/env.js` โหลด `.env`
+
+```js
+loadLocalEnv();
+```
+
+Step 4: `server.js` start Express
+
+```js
+app.listen(config.port, ...);
+```
+
+## Flow 2: เปิดหน้าเอกสารและหน้าบ้าน
+
+### หน้าเอกสาร
 
 ```text
+GET /
+  -> src/app.js
+  -> res.sendFile(public/index.html)
+```
+
+### หน้าบ้าน
+
+```text
+GET /frontend/
+  -> express.static(public)
+  -> public/frontend/index.html
+```
+
+## Flow 3: Login
+
+ผู้ใช้กรอก Alfresco username/password ที่หน้า `/frontend/`
+
+### Frontend
+
+Step 1: submit form
+
+```js
 public/frontend/index.html
+  -> els.loginForm.addEventListener("submit", ...)
 ```
 
-Step 2: JavaScript ตั้งค่าเริ่มต้น
+Step 2: เรียก function
 
 ```js
-const state = {
-  token: sessionStorage.getItem(tokenKey) || "",
-  username: sessionStorage.getItem(usernameKey) || "",
-}
+login(username, password)
 ```
 
-Step 3: เรียก function แสดงสถานะ login
-
-```js
-renderSession();
-setLoading(false);
-if (state.token) loadFolders();
-```
-
-ความหมาย:
-
-- ถ้ายังไม่มี token จะแสดง form login
-- ถ้ามี token ใน `sessionStorage` จะลองโหลด folder ต่อทันที
-
-## Flow 2: Login
-
-ผู้ใช้กรอก username/password แล้วกด Login
-
-### Frontend Steps
-
-Step 1: form submit เรียก `login()`
-
-```js
-els.loginForm.addEventListener("submit", (event) => {
-  event.preventDefault();
-  login(els.username.value.trim(), els.password.value);
-});
-```
-
-Step 2: `login(username, password)` เรียก backend
+Step 3: ยิง API
 
 ```js
 fetch("/auth/login", {
   method: "POST",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({ username, password }),
-});
+  body: JSON.stringify({ username, password })
+})
 ```
 
-### Backend Steps
+### Backend
 
-Step 3: route `/auth/login` ใน `server.js` รับ request
+Step 4: route รับ request
+
+```text
+src/modules/auth/auth.route.js
+  -> router.post("/login", authController.login)
+```
+
+Step 5: controller อ่าน username/password
+
+```text
+src/modules/auth/auth.controller.js
+  -> login(req, res)
+```
+
+Step 6: controller เรียก service
 
 ```js
-app.post("/auth/login", async (req, res) => { ... });
+const result = await authService.login(username, password);
 ```
 
-Step 4: backend ตรวจ username/password กับ Alfresco
+Step 7: service ตรวจ login กับ Alfresco
+
+```text
+src/modules/auth/auth.service.js
+  -> authRepo.validateAlfrescoLogin(username, password)
+```
+
+Step 8: repo เรียก Alfresco CMIS
+
+```text
+src/modules/auth/auth.repo.js
+  -> validateAlfrescoLogin()
+  -> GET {ALFRESCO_CMIS}/root?cmisselector=object
+```
+
+Step 9: ถ้า login ผ่าน service สร้าง session
+
+```text
+src/modules/auth/auth.service.js
+  -> authSession.createUserSession(username, password)
+```
+
+Step 10: session เก็บข้อมูลใน memory
+
+```text
+src/modules/auth/auth.session.js
+  -> userSessions.set(token, { username, headers, expiresAt })
+```
+
+Step 11: controller set cookie และตอบ JSON
 
 ```js
-await validateAlfrescoLogin(username, password);
+setUserSessionCookie(res, result.accessToken, config.userSessionTtlMs);
+res.json(result);
 ```
 
-Step 5: `validateAlfrescoLogin()` เรียก Alfresco CMIS root
-
-```js
-axios.get(`${ALFRESCO_CMIS}/root`, {
-  headers: createAlfrescoAuthHeader(username, password),
-  params: { cmisselector: "object" },
-});
-```
-
-Step 6: ถ้า login ผ่าน backend สร้าง session
-
-```js
-const token = createUserSession(username, password);
-```
-
-Step 7: `createUserSession()` สร้าง token และเก็บ session ไว้ใน memory
-
-```js
-userSessions.set(token, {
-  username,
-  headers: createAlfrescoAuthHeader(username, password),
-  createdAt: now,
-  lastUsedAt: now,
-  expiresAt: now + USER_SESSION_TTL_MS,
-});
-```
-
-Step 8: backend set cookie ให้ browser
-
-```js
-setUserSessionCookie(res, token);
-```
-
-Step 9: backend ส่ง response กลับ frontend
-
-```json
-{
-  "tokenType": "Bearer",
-  "accessToken": "...",
-  "expiresInMs": 28800000,
-  "username": "alfresco_user"
-}
-```
-
-### Frontend หลัง Login
-
-Step 10: frontend เก็บ token
+Step 12: frontend เก็บ token
 
 ```js
 setLoggedIn(data.accessToken, data.username);
 ```
 
-Step 11: `setLoggedIn()` เก็บ token ลง state และ sessionStorage
+## Flow 4: Auth Middleware
 
-```js
-state.token = token;
-sessionStorage.setItem(tokenKey, token);
+ทุก route ใต้ `/user-api/alfresco/*` ต้องผ่าน middleware ก่อน
+
+Step 1: mount middleware
+
+```text
+src/app.js
+  -> app.use("/user-api/alfresco", requireUserSession, alfrescoRoutes)
 ```
 
-Step 12: login เสร็จแล้วโหลด folder
+Step 2: middleware ตรวจ token
 
-```js
-await loadFolders();
+```text
+src/middlewares/auth.js
+  -> requireUserSession(req, res, next)
 ```
 
-## Flow 3: List Folders
-
-ใช้ตอน login เสร็จ หรือ user ต้องการโหลดรายชื่อ folder ใต้ documentLibrary
-
-### Frontend Steps
-
-Step 1: `loadFolders()` ถูกเรียก
+Step 3: อ่าน token ได้ 2 ทาง
 
 ```js
-await loadFolders();
+getBearerToken(req) || getCookie(req, "alfresco_user_session")
 ```
 
-Step 2: `loadFolders()` เรียก API
+Step 4: หา session
 
 ```js
-fetchJson(`/user-api/alfresco/folders?${params.toString()}`);
+const session = authSession.touchUserSession(token);
 ```
 
-Step 3: `fetchJson()` แนบ Bearer token ให้อัตโนมัติ
+Step 5: ถ้าเจอ session จะใส่ค่าใน req
 
 ```js
-headers: {
-  ...authHeaders(),
-}
-```
-
-Step 4: `authHeaders()` สร้าง header
-
-```js
-Authorization: `Bearer ${state.token}`
-```
-
-### Backend Steps
-
-Step 5: request เข้า middleware ก่อน
-
-```js
-app.use("/user-api/alfresco", requireUserSession);
-```
-
-Step 6: `requireUserSession()` ตรวจ token
-
-```js
-const token = getBearerToken(req) || getCookie(req, "alfresco_user_session");
-const session = userSessions.get(token);
-```
-
-Step 7: ถ้าเจอ session จะผูก Alfresco auth header ไว้ใน request
-
-```js
-req.alfrescoAuthHeaders = session.headers;
 req.alfrescoUsername = session.username;
+req.alfrescoAuthHeaders = session.headers;
 ```
 
-Step 8: route list folders ทำงาน
+Step 6: route ถัดไปใช้ `req.alfrescoAuthHeaders` ไปเรียก Alfresco ตามสิทธิ์ user
+
+## Flow 5: List Folders
+
+### Frontend
+
+Step 1: หลัง login สำเร็จเรียก
 
 ```js
-app.get("/user-api/alfresco/folders", async (req, res) => { ... });
+loadFolders();
 ```
 
-Step 9: route เรียก `getChildrenByPath()`
+Step 2: ยิง API
 
 ```js
-const items = await getChildrenByPath(folderPath, req.alfrescoAuthHeaders);
+fetchJson(`/user-api/alfresco/folders?path=/Sites/tg-saving/documentLibrary`)
 ```
 
-Step 10: `getChildrenByPath()` เรียก Alfresco
+Step 3: `fetchJson()` แนบ Bearer token
 
 ```js
-axios.get(cmisUrlForPath(folderPath), {
-  headers,
-  params: { cmisselector: "children" },
-});
+headers: { ...authHeaders() }
 ```
 
-Step 11: แปลงข้อมูลด้วย `mapCmisObject()` และส่งเฉพาะ folder กลับ frontend
+### Backend
+
+Step 4: ผ่าน `requireUserSession`
+
+Step 5: route รับ request
+
+```text
+src/modules/alfresco/alfresco.route.js
+  -> router.get("/folders", alfrescoController.listFolders)
+```
+
+Step 6: controller เรียก service
+
+```text
+src/modules/alfresco/alfresco.controller.js
+  -> listFolders(req, res)
+  -> alfrescoService.listFolders(folderPath, req.alfrescoAuthHeaders)
+```
+
+Step 7: service เรียก repo
+
+```text
+src/modules/alfresco/alfresco.service.js
+  -> listFolders()
+  -> alfrescoRepo.getChildrenByPath()
+```
+
+Step 8: repo เรียก Alfresco
+
+```text
+src/modules/alfresco/alfresco.repo.js
+  -> getChildrenByPath()
+  -> GET cmisUrlForPath(folderPath)?cmisselector=children
+```
+
+Step 9: service filter เฉพาะ folder
 
 ```js
-res.json(items.filter((item) => item.isFolder));
+items.filter((item) => item.isFolder)
 ```
 
-## Flow 4: List/Search Documents
+## Flow 6: List/Search Documents
 
-เกิดเมื่อ user เลือก folder หรือกดค้นหา
+### Frontend
 
-### Frontend Steps
-
-Step 1: user เลือก folder
+Step 1: user เลือก folder หรือกดค้นหา
 
 ```js
-els.folderSelect.addEventListener("change", () => {
-  syncSearchState();
-  loadFiles(true);
-});
+syncSearchState();
+loadFiles(true);
 ```
 
-Step 2: `syncSearchState()` อ่านค่าจาก UI ลง state
-
-```js
-state.folderPath = els.folderSelect.value || "";
-state.q = els.keyword.value.trim();
-state.maxItems = Number(els.pageSize.value);
-```
-
-Step 3: `loadFiles()` สร้าง URL
+Step 2: สร้าง URL
 
 ```js
 buildDocumentsUrl();
 ```
 
-Step 4: `buildDocumentsUrl()` คืน URL เช่น
+ตัวอย่าง:
 
 ```text
 /user-api/alfresco/documents?folderPath=/Sites/tg-saving/documentLibrary/การเงิน&q=026277&maxItems=100&skipCount=0
 ```
 
-Step 5: `loadFiles()` เรียก API ผ่าน `fetchJson()`
+Step 3: ยิง API
 
 ```js
 const data = await fetchJson(buildDocumentsUrl());
 ```
 
-### Backend Steps
+### Backend
 
-Step 6: request ผ่าน `requireUserSession()` ก่อนเหมือน Flow 3
+Step 4: ผ่าน `requireUserSession`
 
-Step 7: route documents รับ request
+Step 5: route รับ request
 
-```js
-app.get("/user-api/alfresco/documents", async (req, res) => { ... });
+```text
+src/modules/alfresco/alfresco.route.js
+  -> router.get("/documents", alfrescoController.listDocuments)
 ```
 
-Step 8: route อ่าน parameter
+Step 6: controller อ่าน query params
 
 ```js
 const folderPath = req.query.folderPath || req.query.path || "/Sites/tg-saving/documentLibrary";
 const q = req.query.q || req.query.keyword || req.query.name;
 ```
 
-Step 9: ถ้ามี keyword จะเรียก search
+Step 7: controller เรียก service
 
 ```js
-await searchDocumentsInTree(folderPath, q, req.alfrescoAuthHeaders, options);
+alfrescoService.listOrSearchDocuments(folderPath, q, req.alfrescoAuthHeaders, options)
 ```
 
-Step 10: ถ้าไม่มี keyword จะเรียก list
+Step 8: service เลือก function
+
+```text
+ถ้ามี q -> searchDocumentsInTree()
+ถ้าไม่มี q -> queryDocumentsInTree()
+```
+
+Step 9A: กรณี list ทั้งหมด
+
+```text
+queryDocumentsInTree()
+  -> alfrescoRepo.getObjectByPath() เพื่อหา folderId
+  -> สร้าง CMIS query: SELECT * FROM cmis:document WHERE IN_TREE('folderId')
+  -> alfrescoRepo.queryDocuments()
+```
+
+Step 9B: กรณี search
+
+```text
+searchDocumentsInTree()
+  -> alfrescoRepo.getObjectByPath() เพื่อหา folderId
+  -> สร้าง CMIS query: ... AND cmis:name LIKE '%keyword%'
+  -> alfrescoRepo.queryDocuments()
+```
+
+Step 10: repo เรียก Alfresco
+
+```text
+src/modules/alfresco/alfresco.repo.js
+  -> queryDocuments()
+  -> GET {ALFRESCO_CMIS}?cmisselector=query&q=...
+```
+
+Step 11: service map result กลับ frontend
 
 ```js
-await queryDocumentsInTree(folderPath, req.alfrescoAuthHeaders, options);
+files: (data.results || []).map((item) => mapCmisObject(item))
 ```
 
-### กรณี List ทั้งหมด
-
-Step 11A: `queryDocumentsInTree()` หา folder object ก่อน
-
-```js
-const folder = await getObjectByPath(folderPath, headers);
-```
-
-Step 12A: `getObjectByPath()` เรียก Alfresco เพื่อเอา folder id
-
-```js
-params: { cmisselector: "object" }
-```
-
-Step 13A: `queryDocumentsInTree()` สร้าง CMIS query
-
-```sql
-SELECT * FROM cmis:document WHERE IN_TREE('folderId')
-```
-
-Step 14A: เรียก Alfresco query API
-
-```js
-axios.get(ALFRESCO_CMIS, {
-  headers,
-  params: { cmisselector: "query", q: query, maxItems, skipCount },
-});
-```
-
-### กรณี Search
-
-Step 11B: `searchDocumentsInTree()` หา folder object ก่อน
-
-```js
-const folder = await getObjectByPath(folderPath, headers);
-```
-
-Step 12B: สร้าง CMIS query แบบ LIKE
-
-```sql
-SELECT * FROM cmis:document
-WHERE IN_TREE('folderId')
-AND cmis:name LIKE '%keyword%'
-```
-
-Step 13B: เรียก Alfresco query API
-
-```js
-axios.get(ALFRESCO_CMIS, {
-  headers,
-  params: { cmisselector: "query", q: query, searchAllVersions: false, maxItems, skipCount },
-});
-```
-
-### Response กลับ Frontend
-
-Step 15: backend ส่ง JSON กลับ
-
-```js
-res.json({
-  ...result,
-  username: req.alfrescoUsername,
-  nextSkipCount: result.hasMoreItems ? result.skipCount + result.count : null,
-});
-```
-
-Step 16: frontend render ตาราง
+Step 12: frontend render ตาราง
 
 ```js
 renderRows(data.files || []);
 ```
 
-## Flow 5: Open File
+## Flow 7: Open File
 
-เกิดเมื่อ user กดปุ่ม `เปิด`
+### Frontend
 
-### Frontend Steps
-
-Step 1: ในตาราง แต่ละไฟล์มีปุ่มที่เก็บ `downloadUrl`
+Step 1: ปุ่มเปิดไฟล์มี `data-download-url`
 
 ```html
 <button data-download-url="/user-api/alfresco/documents/:id/content?name=file.pdf">เปิด</button>
 ```
 
-Step 2: user click ปุ่ม เปิด
+Step 2: click แล้วเรียก
 
 ```js
-els.rows.addEventListener("click", (event) => {
-  const button = event.target.closest("button[data-download-url]");
-  if (button) openDocument(button.dataset.downloadUrl);
-});
+openDocument(button.dataset.downloadUrl);
 ```
 
-Step 3: `openDocument()` เปิด URL ตรง
+Step 3: เปิด URL ตรง
 
 ```js
 window.open(url, "_blank", "noopener");
 ```
 
-หมายเหตุ:
+หมายเหตุ: `window.open()` แนบ Authorization header ไม่ได้ จึงใช้ cookie `alfresco_user_session` ที่ backend set หลัง login
 
-- `window.open()` แนบ `Authorization` header เองไม่ได้
-- browser จึงใช้ cookie `alfresco_user_session` ที่ backend set ไว้หลัง login
-- browser ส่ง cookie ไปกับ request อัตโนมัติ
+### Backend
 
-### Backend Steps
+Step 4: request ผ่าน `requireUserSession`
 
-Step 4: request เข้า `/user-api/alfresco/documents/:id/content`
-
-```js
-app.get("/user-api/alfresco/documents/:id/content", async (req, res) => { ... });
-```
-
-Step 5: request ผ่าน `requireUserSession()` ก่อน
-
-```js
-const token = getBearerToken(req) || getCookie(req, "alfresco_user_session");
-```
-
-กรณี browser เปิดไฟล์:
+Step 5: route รับ request
 
 ```text
-ใช้ token จาก cookie
+src/modules/alfresco/alfresco.route.js
+  -> router.get("/documents/:id/content", alfrescoController.streamDocumentContent)
 ```
 
-กรณี dev/Postman เปิดไฟล์:
+Step 6: controller เรียก service
+
+```js
+alfrescoService.streamDocumentContent(res, req.params.id, req.query.name, req.alfrescoAuthHeaders)
+```
+
+Step 7: service เรียก repo
 
 ```text
-ใช้ token จาก Authorization: Bearer <accessToken>
+src/modules/alfresco/alfresco.service.js
+  -> streamDocumentContent()
+  -> alfrescoRepo.getDocumentContentStream()
 ```
 
-Step 6: route เรียก `streamDocumentContent()`
+Step 8: repo เรียก Alfresco content
 
-```js
-await streamDocumentContent(res, req.params.id, req.query.name, req.alfrescoAuthHeaders);
+```text
+GET {ALFRESCO_CMIS}/root?cmisselector=content&objectId=:id
+responseType: stream
 ```
 
-Step 7: `streamDocumentContent()` เรียก Alfresco content API
-
-```js
-axios.get(`${ALFRESCO_CMIS}/root`, {
-  headers,
-  params: { cmisselector: "content", objectId: id },
-  responseType: "stream",
-});
-```
-
-Step 8: backend set response header
-
-```js
-res.setHeader("Content-Type", result.headers["content-type"] || "application/octet-stream");
-res.setHeader("Content-Disposition", `inline; filename="${encodeURIComponent(fileName)}"`);
-```
-
-Step 9: backend stream file กลับ browser
+Step 9: service stream กลับ browser
 
 ```js
 result.data.pipe(res);
 ```
 
-Step 10: browser แสดง PDF/content ใน tab ใหม่
+## Flow 8: Logout
 
-## Flow 6: Logout
+### Frontend
 
-### Frontend Steps
-
-Step 1: user กด Logout
+Step 1: กด Logout
 
 ```js
-els.logoutBtn.addEventListener("click", async () => { ... });
+els.logoutBtn.addEventListener("click", async () => { ... })
 ```
 
-Step 2: frontend เรียก backend
+Step 2: ยิง API
 
 ```js
-fetch("/auth/logout", { method: "POST", headers: authHeaders() });
+fetch("/auth/logout", { method: "POST", headers: authHeaders() })
 ```
 
-Step 3: frontend ล้าง state และ sessionStorage
+Step 3: ล้าง browser state
 
 ```js
 clearSession();
 ```
 
-### Backend Steps
+### Backend
 
-Step 4: route logout รับ request
+Step 4: route รับ request
 
-```js
-app.post("/auth/logout", requireUserSession, (req, res) => { ... });
+```text
+src/modules/auth/auth.route.js
+  -> router.post("/logout", requireUserSession, authController.logout)
 ```
 
-Step 5: backend ลบ session ใน memory
+Step 5: controller เรียก service
 
 ```js
-userSessions.delete(req.userSessionToken);
+authService.logout(req.userSessionToken);
 ```
 
-Step 6: backend ลบ cookie
+Step 6: service ลบ session
+
+```text
+src/modules/auth/auth.service.js
+  -> authSession.deleteUserSession(token)
+```
+
+Step 7: controller ลบ cookie
 
 ```js
 clearUserSessionCookie(res);
 ```
 
-Step 7: response กลับ
+## Function Summary
 
-```json
-{ "ok": true }
-```
-
-## สรุป Function หลัก
-
-| Function | อยู่ไฟล์ | หน้าที่ |
+| Function | File | หน้าที่ |
 |---|---|---|
-| `login()` | `public/frontend/index.html` | ส่ง username/password ไป `/auth/login` |
-| `setLoggedIn()` | `public/frontend/index.html` | เก็บ accessToken ลง state/sessionStorage |
-| `authHeaders()` | `public/frontend/index.html` | สร้าง `Authorization: Bearer <token>` |
-| `fetchJson()` | `public/frontend/index.html` | เรียก API แบบ JSON พร้อมแนบ token |
-| `loadFolders()` | `public/frontend/index.html` | โหลดรายชื่อ folder |
-| `loadFiles()` | `public/frontend/index.html` | โหลดหรือค้นหาไฟล์ |
-| `openDocument()` | `public/frontend/index.html` | เปิดไฟล์ด้วย `window.open()` |
-| `validateAlfrescoLogin()` | `server.js` | ตรวจ login กับ Alfresco |
-| `createUserSession()` | `server.js` | สร้าง session token ใน memory |
-| `setUserSessionCookie()` | `server.js` | set cookie ให้ browser |
-| `requireUserSession()` | `server.js` | ตรวจ Bearer token หรือ cookie ก่อนเข้า `/user-api/alfresco/*` |
-| `getChildrenByPath()` | `server.js` | เรียก Alfresco เพื่อ list children |
-| `getObjectByPath()` | `server.js` | หา object/folder id จาก path |
-| `queryDocumentsInTree()` | `server.js` | list เอกสารทั้งหมดใต้ folder |
-| `searchDocumentsInTree()` | `server.js` | ค้นหาเอกสารจากชื่อไฟล์ |
-| `streamDocumentContent()` | `server.js` | stream file จาก Alfresco กลับ browser/client |
+| `createApp` / `app` setup | `src/app.js` | mount static, auth routes, alfresco routes |
+| `login()` | `auth.controller.js` | รับ login request และตอบ token/cookie |
+| `authService.login()` | `auth.service.js` | ตรวจ login และสร้าง session |
+| `validateAlfrescoLogin()` | `auth.repo.js` | เรียก Alfresco เพื่อเช็ก username/password |
+| `createUserSession()` | `auth.session.js` | สร้าง session token ใน memory |
+| `requireUserSession()` | `middlewares/auth.js` | ตรวจ Bearer token หรือ cookie |
+| `listFolders()` | `alfresco.controller.js` | endpoint list folders |
+| `alfrescoService.listFolders()` | `alfresco.service.js` | business logic list folder |
+| `getChildrenByPath()` | `alfresco.repo.js` | เรียก Alfresco children API |
+| `listDocuments()` | `alfresco.controller.js` | endpoint list/search documents |
+| `listOrSearchDocuments()` | `alfresco.service.js` | เลือก list หรือ search |
+| `queryDocumentsInTree()` | `alfresco.service.js` | list documents ด้วย CMIS IN_TREE |
+| `searchDocumentsInTree()` | `alfresco.service.js` | search documents ด้วย CMIS LIKE |
+| `queryDocuments()` | `alfresco.repo.js` | เรียก Alfresco CMIS query |
+| `streamDocumentContent()` | `alfresco.service.js` | stream file กลับ browser/client |
+| `getDocumentContentStream()` | `alfresco.repo.js` | เรียก Alfresco content stream |
 

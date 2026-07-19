@@ -11,6 +11,9 @@ async function login(username, password) {
     accessToken: token,
     expiresInMs: config.userSessionTtlMs,
     username,
+    user: {
+      username,
+    },
   };
 }
 
@@ -27,3 +30,4 @@ module.exports = {
   login,
   logout,
 };
+

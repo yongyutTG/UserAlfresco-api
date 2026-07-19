@@ -6,7 +6,7 @@ function requireUserSession(req, res, next) {
   const session = authSession.touchUserSession(token);
 
   if (!session) {
-    return res.status(401).json({ message: "Unauthorized: missing or invalid user session token" });
+    return res.status(401).json({ message: "Unauthorized: ไม่พบ Token" });
   }
 
   req.userSessionToken = token;

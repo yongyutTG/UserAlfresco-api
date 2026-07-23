@@ -1,16 +1,16 @@
 const alfrescoRepo = require("./alfresco.repo");
 const { escapeCmisLike, escapeCmisString, mapCmisObject } = require("../../utils/cmis");
-
+//ฟังชันตรวจสอบสถานะการเชื่อมต่อกับ Alfresco
 async function getHealth() {
   const alfresco = await alfrescoRepo.getServerInfo();
   return { ok: true, mode: "user-session", alfresco };
 }
-
+//ฟังชันดึงรายการโฟลเดอร์จาก Alfresco
 async function listFolders(folderPath, headers) {
   const items = await alfrescoRepo.getChildrenByPath(folderPath || "/", headers);
   return items.filter((item) => item.isFolder);
 }
-
+//ฟังชันดึงรายการเอกสารจาก Alfresco ตาม path และ query
 async function queryDocumentsInTree(folderPath, headers, options = {}) {
   const folder = await alfrescoRepo.getObjectByPath(folderPath, headers);
   const maxItems = Math.min(Number(options.maxItems || 1000), 60000);
@@ -29,7 +29,7 @@ async function queryDocumentsInTree(folderPath, headers, options = {}) {
     files: (data.results || []).map((item) => mapCmisObject(item)),
   };
 }
-
+//ฟังชันค้นหาเอกสารใน Alfresco ตาม path และ query
 async function searchDocumentsInTree(folderPath, searchText, headers, options = {}) {
   const folder = await alfrescoRepo.getObjectByPath(folderPath, headers);
   const maxItems = Math.min(Number(options.maxItems || 100), 5000);
@@ -39,12 +39,13 @@ async function searchDocumentsInTree(folderPath, searchText, headers, options = 
   if (!normalizedSearchText) {
     return { path: folderPath, folderId: folder.id, q: "", count: 0, total: 0, hasMoreItems: false, maxItems, skipCount, files: [] };
   }
-
+//ฟังชันสร้าง query สำหรับค้นหาเอกสารใน Alfresco
   const query = [
     "SELECT * FROM cmis:document",
     `WHERE IN_TREE('${escapeCmisString(folder.id)}')`,
     `AND cmis:name LIKE '%${escapeCmisLike(normalizedSearchText)}%'`,
   ].join(" ");
+  //ฟังชันเรียกใช้ alfrescoRepo.queryDocuments
   const data = await alfrescoRepo.queryDocuments(query, headers, { searchAllVersions: false, maxItems, skipCount });
 
   return {
@@ -59,7 +60,7 @@ async function searchDocumentsInTree(folderPath, searchText, headers, options = 
     files: (data.results || []).map((item) => mapCmisObject(item)),
   };
 }
-
+//ฟังชันดึงรายการเอกสารจาก Alfresco ตาม path และ query หรือค้นหาเอกสาร
 async function listOrSearchDocuments(folderPath, q, headers, options = {}) {
   const result = q && String(q).trim()
     ? await searchDocumentsInTree(folderPath, q, headers, options)
@@ -70,12 +71,12 @@ async function listOrSearchDocuments(folderPath, q, headers, options = {}) {
     nextSkipCount: result.hasMoreItems ? result.skipCount + result.count : null,
   };
 }
-
+//ฟังชันสตรีมเนื้อหาเอกสารจาก Alfresco
 async function streamDocumentContent(res, id, name, headers) {
   if (!id || id === "DOCUMENT_ID") {
     return res.status(400).json({ message: "Missing real document id" });
   }
-
+//ฟังชันเรียกใช้ alfrescoRepo.getDocumentContentStream และ alfrescoRepo.safeFileName
   const result = await alfrescoRepo.getDocumentContentStream(id, headers);
   const fileName = alfrescoRepo.safeFileName(name);
 

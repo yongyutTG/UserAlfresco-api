@@ -1,3 +1,4 @@
+//ฟังชันจัดการข้อมูลข้อผิดพลาดอย่างปลอดภัย
 function safeErrorData(err) {
   const data = err.response?.data;
   if (!data) return err.message;
@@ -6,12 +7,12 @@ function safeErrorData(err) {
   if (data.status || data.message || data.exception) return data;
   return { message: err.message, contentType: err.response?.headers?.["content-type"] };
 }
-
+//ฟังชันจัดการข้อผิดพลาดและส่ง response กลับไปยัง client
 function handleError(res, message, err) {
   const status = err.response?.status || 500;
   res.status(status).json({ message, status, error: safeErrorData(err) });
 }
-
+//ฟังชันจัดการ route ที่ไม่พบ
 function notFound(req, res) {
   res.status(404).json({ message: "Route not found" });
 }

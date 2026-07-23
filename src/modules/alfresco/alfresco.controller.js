@@ -1,6 +1,7 @@
 const alfrescoService = require("./alfresco.service");
 const { handleError } = require("../../middlewares/errorHandler");
 
+//ฟังชันตรวจสอบสถานะการเชื่อมต่อกับ Alfresco
 async function health(req, res) {
   try {
     const result = await alfrescoService.getHealth();
@@ -9,7 +10,7 @@ async function health(req, res) {
     handleError(res, "Cannot connect to Alfresco", err);
   }
 }
-
+//ฟังชันดึงรายการโฟลเดอร์จาก Alfresco
 async function listFolders(req, res) {
   try {
     const folderPath = req.query.path || "/";
@@ -19,7 +20,7 @@ async function listFolders(req, res) {
     handleError(res, "Cannot list Alfresco folders for user", err);
   }
 }
-
+//ฟังชันดึงรายการเอกสารจาก Alfresco
 async function listDocuments(req, res) {
   try {
     const folderPath = req.query.folderPath || req.query.path || "/Sites/tg-saving/documentLibrary";
@@ -35,7 +36,7 @@ async function listDocuments(req, res) {
     handleError(res, "Cannot list Alfresco documents for user", err);
   }
 }
-
+//ฟังชันสตรีมเนื้อหาเอกสารจาก Alfresco
 async function streamDocumentContent(req, res) {
   try {
     await alfrescoService.streamDocumentContent(res, req.params.id, req.query.name, req.alfrescoAuthHeaders);

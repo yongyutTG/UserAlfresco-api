@@ -3,6 +3,7 @@ const authService = require("./auth.service");
 const { clearUserSessionCookie, setUserSessionCookie } = require("../../utils/httpSession");
 const { handleError } = require("../../middlewares/errorHandler");
 
+//ฟังชันล็อกอินผู้ใช้และตั้งค่า cookie session
 async function login(req, res) {
   try {
     const username = String(req.body.username || "").trim();
@@ -12,6 +13,7 @@ async function login(req, res) {
       return res.status(400).json({ message: "Missing username or password" });
     }
 
+    //รับค่าจาก authService.login และตั้งค่า cookie session ของผู้ใช้
     const result = await authService.login(username, password);
     setUserSessionCookie(res, result.accessToken, config.userSessionTtlMs);
     res.json(result);
@@ -20,6 +22,7 @@ async function login(req, res) {
   }
 }
 
+//ฟังชันดึงข้อมูลผู้ใช้ที่ล็อกอินอยู่
 function me(req, res) {
   const session = authService.getCurrentSession(req.userSessionToken);
   res.json({

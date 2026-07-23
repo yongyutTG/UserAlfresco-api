@@ -1,6 +1,7 @@
 const { getBearerToken, getCookie } = require("../utils/httpSession");
 const authSession = require("../modules/auth/auth.session");
 
+//ฟังชันตรวจสอบ session ของผู้ใช้และตั้งค่า req.userSessionToken, req.alfrescoUsername, req.alfrescoAuthHeaders
 function requireUserSession(req, res, next) {
   const token = getBearerToken(req) || getCookie(req, "alfresco_user_session");
   const session = authSession.touchUserSession(token);

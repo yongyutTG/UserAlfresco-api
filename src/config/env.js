@@ -1,8 +1,11 @@
 const fs = require("fs");
 const path = require("path");
 
+//ฟังชันโหลดค่าตัวแปรสภาพแวดล้อมจากไฟล์ .env
 function loadLocalEnv() {
   const envPath = path.join(__dirname, "..", "..", ".env");
+  console.log('ข้อมูล env:', envPath);
+
   if (!fs.existsSync(envPath)) return;
 
   const lines = fs.readFileSync(envPath, "utf8").split(/\r?\n/);
@@ -19,12 +22,13 @@ function loadLocalEnv() {
   }
 }
 
+//ฟังชันโหลดค่าตัวแปรสภาพแวดล้อมจากไฟล์ .env ถ
 loadLocalEnv();
 
 const config = {
-  port: Number(process.env.PORT || 3001),
-  alfrescoHost: process.env.ALFRESCO_HOST || "http://172.17.1.21",
-  userSessionTtlMs: Number(process.env.USER_SESSION_TTL_MS || 8 * 60 * 60 * 1000),
+  port: Number(process.env.PORT),
+  alfrescoHost: process.env.ALFRESCO_HOST,
+  userSessionTtlMs: Number(process.env.USER_SESSION_TTL_MS),
 };
 
 config.alfrescoCmis = `${config.alfrescoHost}/alfresco/api/-default-/public/cmis/versions/1.1/browser`;

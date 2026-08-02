@@ -4,6 +4,7 @@ const authSession = require("./auth.session");
 
 //ฟังชันล็อกอินผู้ใช้และสร้าง session token
 async function login(username, password) {
+  //ตรวจสอบการล็อกอินของผู้ใช้ใน Alfresco โดยเรียกใช้ฟังชัน validateAlfrescoLogin จาก authRepo
   await authRepo.validateAlfrescoLogin(username, password);
   const token = authSession.createUserSession(username, password);
 

@@ -73,6 +73,14 @@ GET /health
 GET http://localhost:3001/health
 ```
 
+## ข้างใน backend ไปเรียกอะไร
+
+เส้นนี้ไม่ได้เรียก CMIS แต่ใช้ Alfresco Web Script เพื่อตรวจ server:
+
+```http
+GET {ALFRESCO_HOST}/alfresco/service/api/server
+```
+
 ## ตัวอย่าง Response
 
 ```json
@@ -157,6 +165,17 @@ Content-Type: application/json
 ```http
 Authorization: Bearer ACCESS_TOKEN
 ```
+
+## ข้างใน backend ไปเรียกอะไร
+
+ตอน login backend จะตรวจ username/password กับ Alfresco ด้วย CMIS:
+
+```http
+GET {ALFRESCO_HOST}/alfresco/api/-default-/public/cmis/versions/1.1/browser/root?cmisselector=object
+Authorization: Basic base64(username:password)
+```
+
+ถ้า Alfresco ตอบสำเร็จ backend จะสร้าง `accessToken` ของโปรเจกต์เราเอง แล้วเก็บ Basic Auth header ของ user ไว้ใน session ฝั่ง backend
 
 ---
 
@@ -278,6 +297,33 @@ GET http://localhost:3001/user-api/alfresco/folders?path=/Sites/tg-saving/docume
 Authorization: Bearer ACCESS_TOKEN
 ```
 
+## ข้างใน backend ไปเรียก CMIS อะไร
+
+backend จะเอา `path` ไปแปลงเป็น CMIS Browser URL แล้วเรียก:
+
+```http
+GET {ALFRESCO_HOST}/alfresco/api/-default-/public/cmis/versions/1.1/browser/root/Sites/tg-saving/documentLibrary?cmisselector=children
+Authorization: Basic base64(username:password)
+```
+
+ถ้าส่ง:
+
+```text
+path=/
+```
+
+จะเรียก:
+
+```http
+GET {ALFRESCO_HOST}/alfresco/api/-default-/public/cmis/versions/1.1/browser/root?cmisselector=children
+```
+
+จากนั้น backend จะกรองเฉพาะ object ที่เป็น:
+
+```text
+cmis:baseTypeId = cmis:folder
+```
+
 ## ตัวอย่าง Response
 
 ```json
@@ -348,6 +394,67 @@ Authorization: Bearer ACCESS_TOKEN
 ```http
 GET http://localhost:3001/user-api/alfresco/documents?folderPath=/Sites/tg-saving/documentLibrary/การเงิน&q=026277&maxItems=100&skipCount=0
 Authorization: Bearer ACCESS_TOKEN
+```
+
+## ข้างใน backend ไปเรียก CMIS อะไร
+
+เส้นนี้ทำงาน 2 จังหวะ
+
+### จังหวะที่ 1: หา folder object จาก path
+
+backend จะเรียก CMIS เพื่อหา `cmis:objectId` ของ folder ก่อน:
+
+```http
+GET {ALFRESCO_HOST}/alfresco/api/-default-/public/cmis/versions/1.1/browser/root/Sites/tg-saving/documentLibrary/การเงิน?cmisselector=object
+Authorization: Basic base64(username:password)
+```
+
+ค่าที่ได้สำคัญคือ:
+
+```text
+cmis:objectId
+```
+
+### จังหวะที่ 2A: ถ้าไม่ได้ส่ง q จะ list เอกสารทั้งหมดใน folder tree
+
+backend จะใช้ CMIS Query:
+
+```sql
+SELECT * FROM cmis:document
+WHERE IN_TREE('folderObjectId')
+```
+
+แล้วเรียก:
+
+```http
+GET {ALFRESCO_HOST}/alfresco/api/-default-/public/cmis/versions/1.1/browser
+  ?cmisselector=query
+  &q=SELECT * FROM cmis:document WHERE IN_TREE('folderObjectId')
+  &maxItems=100
+  &skipCount=0
+Authorization: Basic base64(username:password)
+```
+
+### จังหวะที่ 2B: ถ้าส่ง q / keyword / name จะค้นจากชื่อไฟล์
+
+backend จะใช้ CMIS Query:
+
+```sql
+SELECT * FROM cmis:document
+WHERE IN_TREE('folderObjectId')
+AND cmis:name LIKE '%keyword%'
+```
+
+ตัวอย่างเมื่อค้น `026277`:
+
+```http
+GET {ALFRESCO_HOST}/alfresco/api/-default-/public/cmis/versions/1.1/browser
+  ?cmisselector=query
+  &q=SELECT * FROM cmis:document WHERE IN_TREE('folderObjectId') AND cmis:name LIKE '%026277%'
+  &searchAllVersions=false
+  &maxItems=100
+  &skipCount=0
+Authorization: Basic base64(username:password)
 ```
 
 ## ตัวอย่าง Response
@@ -444,6 +551,24 @@ Authorization: Bearer ACCESS_TOKEN
 Content-Type: application/pdf
 ```
 
+## ข้างใน backend ไปเรียก CMIS อะไร
+
+backend จะเอา `id` จาก path parameter ไปส่งเป็น `objectId` ให้ CMIS:
+
+```http
+GET {ALFRESCO_HOST}/alfresco/api/-default-/public/cmis/versions/1.1/browser/root
+  ?cmisselector=content
+  &objectId={id}
+Authorization: Basic base64(username:password)
+```
+
+จากนั้น backend จะ stream binary content กลับไปที่ browser/client โดยตั้ง header ประมาณนี้:
+
+```http
+Content-Type: application/pdf
+Content-Disposition: inline; filename="file.pdf"
+```
+
 ---
 
 # 9. ตัวอย่าง Flow ใน Postman
@@ -521,6 +646,20 @@ Authorization: Bearer {{alfresco_access_token}}
 | `GET` | `/user-api/alfresco/folders` | ต้อง | Query string | ดู folder |
 | `GET` | `/user-api/alfresco/documents` | ต้อง | Query string | list/search เอกสาร |
 | `GET` | `/user-api/alfresco/documents/{id}/content` | ต้อง | Path param + query string | เปิด/ดาวน์โหลดไฟล์ |
+
+---
+
+# 10.1 สรุป Backend ไปเรียก Alfresco เส้นไหน
+
+| Endpoint ของโปรเจกต์ | ข้างในไปเรียก Alfresco | ประเภท |
+|---|---|---|
+| `GET /health` | `GET /alfresco/service/api/server` | Web Script |
+| `POST /auth/login` | `GET /alfresco/api/-default-/public/cmis/versions/1.1/browser/root?cmisselector=object` | CMIS |
+| `GET /user-api/alfresco/folders?path=...` | `GET /alfresco/api/-default-/public/cmis/versions/1.1/browser/root/{path}?cmisselector=children` | CMIS |
+| `GET /user-api/alfresco/documents?folderPath=...` | `GET /alfresco/api/-default-/public/cmis/versions/1.1/browser/root/{folderPath}?cmisselector=object` แล้ว `GET /alfresco/api/-default-/public/cmis/versions/1.1/browser?cmisselector=query&q=...` | CMIS |
+| `GET /user-api/alfresco/documents/{id}/content` | `GET /alfresco/api/-default-/public/cmis/versions/1.1/browser/root?cmisselector=content&objectId={id}` | CMIS |
+
+หมายเหตุ: `{path}` และ `{folderPath}` จะถูก encode ทีละ segment ในโค้ด `src/utils/cmis.js`
 
 ---
 

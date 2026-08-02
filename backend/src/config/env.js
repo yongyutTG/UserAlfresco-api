@@ -3,7 +3,7 @@ const path = require("path");
 
 //ฟังชันโหลดค่าตัวแปรสภาพแวดล้อมจากไฟล์ .env
 function loadLocalEnv() {
-  const envPath = path.join(__dirname, "..", "..", ".env");
+  const envPath = path.join(__dirname, "..", "..", "..", ".env");
   console.log('ข้อมูล env:', envPath);
 
   if (!fs.existsSync(envPath)) return;

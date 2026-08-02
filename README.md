@@ -25,6 +25,7 @@ Node.js เรียก Alfresco CMIS ด้วยสิทธิ์ของ us
 ```bash
 cd C:\xampp\htdocs\UserAlfresco-api
 copy .env.example .env
+cd backend
 npm install
 npm run dev
 ```
@@ -35,6 +36,46 @@ npm run dev
 ALFRESCO_HOST=http://{ IP Server }
 PORT=3001
 USER_SESSION_TTL_MS=28800000
+```
+
+## Project Structure
+
+```text
+UserAlfresco-api/
+├── backend/
+│   ├── src/
+│   │   ├── modules/
+│   │   ├── middlewares/
+│   │   ├── config/
+│   │   ├── utils/
+│   │   └── app.js
+│   ├── public/
+│   │   └── index.html
+│   ├── server.js
+│   └── package.json
+│
+├── frontend/
+│   ├── login/
+│   │   ├── index.html
+│   │   ├── login.css
+│   │   └── login.js
+│   ├── documents/
+│   │   ├── index.html
+│   │   ├── documents.css
+│   │   └── documents.js
+│   └── shared/
+│       ├── css/
+│       │   └── base.css
+│       └── js/
+│           ├── api.js
+│           ├── auth.js
+│           └── storage.js
+│
+├── docs/
+│   └── API.md
+├── .env
+├── .gitignore
+└── README.md
 ```
 
 ## API

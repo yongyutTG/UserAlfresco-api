@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Login | UserAlfresco API</title>
+  <link rel="stylesheet" href="/login/login.css">
+</head>
+<body>
+  <main class="shell">
+    <div class="brand">
+      <div class="brand-mark">A</div>
+      <h1>UserAlfresco API</h1>
+      <div class="subtitle">เข้าสู่ระบบด้วยบัญชี Alfresco เพื่อดูเอกสารตามสิทธิ์</div>
+    </div>
+
+    <section class="login-box">
+      <div class="login-head">Alfresco Login</div>
+      <form id="loginForm">
+        <label for="username">Username</label>
+        <input id="username" name="username" type="text" autocomplete="username" required autofocus>
+
+        <label for="password">Password</label>
+        <input id="password" name="password" type="password" autocomplete="current-password" required>
+
+        <button id="loginBtn" type="submit">Login</button>
+        <div class="hint">หลัง login สำเร็จ ระบบจะเก็บ accessToken ไว้ใน sessionStorage ของ browser แล้วพาไปหน้าไฟล์</div>
+      </form>
+      <div id="message" class="message"></div>
+    </section>
+
+    <div class="footer-link">
+      <a href="/">API Docs</a> · <a href="/frontend/">Files</a>
+    </div>
+  </main>
+  <script src="/login/login.js"></script>
+</body>
+</html>
+

@@ -7,7 +7,7 @@ async function health(req, res) {
     const result = await alfrescoService.getHealth();
     res.json(result);
   } catch (err) {
-    handleError(res, "Cannot connect to Alfresco", err);
+    handleError(res, "ไม่สามารถเชื่อมต่อกับ Alfresco ได้", err);
   }
 }
 //ฟังชันดึงรายการโฟลเดอร์จาก Alfresco
@@ -17,7 +17,7 @@ async function listFolders(req, res) {
     const folders = await alfrescoService.listFolders(folderPath, req.alfrescoAuthHeaders);
     res.json(folders);
   } catch (err) {
-    handleError(res, "Cannot list Alfresco folders for user", err);
+    handleError(res, "ไม่สามารถรายการโฟลเดอร์จาก Alfresco ได้", err);
   }
 }
 //ฟังชันดึงรายการเอกสารจาก Alfresco
@@ -33,7 +33,7 @@ async function listDocuments(req, res) {
       username: req.alfrescoUsername,
     });
   } catch (err) {
-    handleError(res, "Cannot list Alfresco documents for user", err);
+    handleError(res, "ไม่สามารถรายการเอกสารจาก Alfresco ได้", err);
   }
 }
 //ฟังชันสตรีมเนื้อหาเอกสารจาก Alfresco
@@ -41,7 +41,7 @@ async function streamDocumentContent(req, res) {
   try {
     await alfrescoService.streamDocumentContent(res, req.params.id, req.query.name, req.alfrescoAuthHeaders);
   } catch (err) {
-    handleError(res, "Cannot download Alfresco document for user", err);
+    handleError(res, "ไม่สามารถดาวน์โหลดเอกสารจาก Alfresco ได้", err);
   }
 }
 

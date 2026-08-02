@@ -109,3 +109,107 @@ GET /user-api/alfresco/documents/:id/content
 | middleware | งานคั่นกลาง เช่น auth, error |
 | utils | function กลางที่ไม่ผูกกับ module ใด module หนึ่ง |
 
+## Note: Alfresco API หลัก ๆ สำหรับ Alfresco 4.2
+
+Alfresco ของระบบนี้เป็น Community 4.2 ดังนั้น API ที่เหมาะกับการดึงเอกสารคือ CMIS และ Web Script เป็นหลัก ส่วน REST API v1 รุ่นใหม่ เช่น `/nodes` ไม่เหมาะกับ version นี้
+
+### 1. CMIS API
+
+ใช้สำหรับงาน folder/file/document เช่น list folder, search file, เปิดไฟล์ หรือ download file
+
+Base URL:
+
+```text
+http://172.17.1.21/alfresco/api/-default-/public/cmis/versions/1.1/browser
+```
+
+ตัวอย่าง endpoint:
+
+```text
+GET /root?cmisselector=children
+```
+
+ดู root folder ที่ user มีสิทธิ์เห็น
+
+```text
+GET /root/Sites/tg-saving/documentLibrary?cmisselector=children
+```
+
+ดู folder/file ภายใต้ path ที่กำหนด
+
+```text
+GET /root?cmisselector=query&q=SELECT * FROM cmis:document
+```
+
+ค้นหาเอกสารด้วย CMIS query
+
+```text
+GET /root?cmisselector=content&objectId=DOCUMENT_ID
+```
+
+เปิดหรือ download ไฟล์ตาม `objectId`
+
+### 2. Web Script API
+
+ใช้สำหรับดูข้อมูลระบบ user site และ service อื่น ๆ ของ Alfresco
+
+Base URL:
+
+```text
+http://172.17.1.21/alfresco/service
+```
+
+ตัวอย่าง endpoint:
+
+```text
+GET /api/server
+```
+
+ดู version/server info ของ Alfresco
+
+```text
+GET /api/people
+GET /api/people/{username}
+```
+
+ดูข้อมูล user
+
+```text
+GET /api/sites
+GET /api/sites/{shortName}
+```
+
+ดูข้อมูล site
+
+```text
+GET /slingshot/search?term=ข้อความค้นหา
+```
+
+ค้นหาด้วย Web Script
+
+### 3. Public REST API v1
+
+เป็น API รุ่นใหม่ของ Alfresco เช่น `/nodes`, `/sites`, `/people`
+
+Base URL:
+
+```text
+http://172.17.1.21/alfresco/api/-default-/public/alfresco/versions/1
+```
+
+หมายเหตุ: Alfresco 4.2 ของระบบนี้ยังไม่รองรับ REST v1 แบบใหม่เต็มรูปแบบ เช่น endpoint นี้เคยทดสอบแล้วใช้ไม่ได้
+
+```text
+GET /nodes/-my-/children
+```
+
+สรุปการใช้งานในโปรเจคนี้:
+
+```text
+ดึง folder/file/document    -> ใช้ CMIS API
+ค้นหาเอกสารใน Alfresco     -> ใช้ CMIS Query
+เปิดไฟล์ PDF               -> ใช้ CMIS Content
+ดู user/site/server         -> ใช้ Web Script API
+REST v1 /nodes/...          -> ไม่เหมาะกับ Alfresco 4.2
+```
+

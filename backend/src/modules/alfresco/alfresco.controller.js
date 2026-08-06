@@ -25,7 +25,8 @@ async function listDocuments(req, res) {
   try {
     const folderPath = req.query.folderPath || req.query.path || "/Sites/tg-saving/documentLibrary";
     const q = req.query.q || req.query.keyword || req.query.name;
-    const options = { maxItems: req.query.maxItems, skipCount: req.query.skipCount };
+    const exactName = req.query.exactName || req.query.fileName;
+    const options = { maxItems: req.query.maxItems, skipCount: req.query.skipCount, exactName };
     const result = await alfrescoService.listOrSearchDocuments(folderPath, q, req.alfrescoAuthHeaders, options);
 
     res.json({

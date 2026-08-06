@@ -372,6 +372,8 @@ Authorization: Bearer ACCESS_TOKEN
 | `q` | Query string | ไม่จำเป็น | ว่าง | `NPR` | keyword สำหรับค้นจากชื่อไฟล์ |
 | `keyword` | Query string | ไม่จำเป็น | ว่าง | `NPR` | alias ของ `q` |
 | `name` | Query string | ไม่จำเป็น | ว่าง | `026277` | alias ของ `q` |
+| `exactName` | Query string | ไม่จำเป็น | ว่าง | `23017_116969.pdf` | ค้นชื่อไฟล์ตรงตัวด้วย `cmis:name = exactName` |
+| `fileName` | Query string | ไม่จำเป็น | ว่าง | `23017_116969.pdf` | alias ของ `exactName` |
 | `maxItems` | Query string | ไม่จำเป็น | `1000` ตอน list, `100` ตอน search | `100` | จำนวนรายการต่อหน้า |
 | `skipCount` | Query string | ไม่จำเป็น | `0` | `0`, `100`, `200` | จำนวนรายการที่ข้าม ใช้ทำ pagination |
 
@@ -395,6 +397,17 @@ Authorization: Bearer ACCESS_TOKEN
 GET http://localhost:3001/user-api/alfresco/documents?folderPath=/Sites/tg-saving/documentLibrary/การเงิน&q=026277&maxItems=100&skipCount=0
 Authorization: Bearer ACCESS_TOKEN
 ```
+
+## ตัวอย่างค้นชื่อไฟล์ตรงตัว
+
+ใช้กรณีรู้ชื่อไฟล์เต็ม เช่นเลขที่สัญญาพร้อม `.pdf`
+
+```http
+GET http://localhost:3001/user-api/alfresco/documents?folderPath=/Sites/tg-saving/documentLibrary&exactName=23017_116969.pdf&maxItems=100&skipCount=0
+Authorization: Bearer ACCESS_TOKEN
+```
+
+หมายเหตุ: ถ้าส่ง `exactName` พร้อมกับ `q` ระบบจะให้ `exactName` ทำงานก่อน เพราะเป็นการค้นแบบเจาะจงกว่า
 
 ## ข้างใน backend ไปเรียก CMIS อะไร
 
@@ -456,6 +469,30 @@ GET {ALFRESCO_HOST}/alfresco/api/-default-/public/cmis/versions/1.1/browser
   &skipCount=0
 Authorization: Basic base64(username:password)
 ```
+
+### จังหวะที่ 2C: ถ้าส่ง exactName / fileName จะค้นชื่อไฟล์ตรงตัว
+
+backend จะใช้ CMIS Query:
+
+```sql
+SELECT * FROM cmis:document
+WHERE IN_TREE('folderObjectId')
+AND cmis:name = '23017_116969.pdf'
+```
+
+ตัวอย่างเมื่อค้น `23017_116969.pdf`:
+
+```http
+GET {ALFRESCO_HOST}/alfresco/api/-default-/public/cmis/versions/1.1/browser
+  ?cmisselector=query
+  &q=SELECT * FROM cmis:document WHERE IN_TREE('folderObjectId') AND cmis:name = '23017_116969.pdf'
+  &searchAllVersions=false
+  &maxItems=100
+  &skipCount=0
+Authorization: Basic base64(username:password)
+```
+
+กรณีนี้เหมาะกับชื่อไฟล์เต็ม เพราะ `_` และ `%` จะถูกมองเป็นตัวอักษรจริง ไม่ใช่ wildcard แบบ `LIKE`
 
 ## ตัวอย่าง Response
 

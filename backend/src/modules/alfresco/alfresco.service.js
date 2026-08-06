@@ -60,11 +60,50 @@ async function searchDocumentsInTree(folderPath, searchText, headers, options = 
     files: (data.results || []).map((item) => mapCmisObject(item)),
   };
 }
+//ฟังชันค้นหาเอกสารแบบชื่อไฟล์ตรงตัว เช่น 23017_116969.pdf
+async function findDocumentByExactNameInTree(folderPath, exactName, headers, options = {}) {
+  const folder = await alfrescoRepo.getObjectByPath(folderPath, headers);
+  const maxItems = Math.min(Number(options.maxItems || 100), 5000);
+  const skipCount = Math.max(Number(options.skipCount || 0), 0);
+  const normalizedExactName = String(exactName || "").trim();
+
+  if (!normalizedExactName) {
+    return { path: folderPath, folderId: folder.id, exactName: "", count: 0, total: 0, hasMoreItems: false, maxItems, skipCount, files: [] };
+  }
+
+  //ฟังชันสร้าง query สำหรับค้นชื่อไฟล์ตรงตัวใน Alfresco
+  //ใช้ = แทน LIKE เพื่อให้ _ หรือ % ถูกมองเป็นตัวอักษรจริง ไม่ใช่ wildcard
+  const query = [
+    "SELECT * FROM cmis:document",
+    `WHERE IN_TREE('${escapeCmisString(folder.id)}')`,
+    `AND cmis:name = '${escapeCmisString(normalizedExactName)}'`,
+  ].join(" ");
+
+  const data = await alfrescoRepo.queryDocuments(query, headers, { searchAllVersions: false, maxItems, skipCount });
+
+  return {
+    path: folderPath,
+    folderId: folder.id,
+    exactName: normalizedExactName,
+    count: data.results?.length || 0,
+    total: data.numItems ?? null,
+    hasMoreItems: Boolean(data.hasMoreItems),
+    maxItems,
+    skipCount,
+    files: (data.results || []).map((item) => mapCmisObject(item)),
+  };
+}
 //ฟังชันดึงรายการเอกสารจาก Alfresco ตาม path และ query หรือค้นหาเอกสาร
 async function listOrSearchDocuments(folderPath, q, headers, options = {}) {
-  const result = q && String(q).trim()
-    ? await searchDocumentsInTree(folderPath, q, headers, options)
-    : await queryDocumentsInTree(folderPath, headers, options);
+  let result;
+
+  if (options.exactName && String(options.exactName).trim()) {
+    result = await findDocumentByExactNameInTree(folderPath, options.exactName, headers, options);
+  } else if (q && String(q).trim()) {
+    result = await searchDocumentsInTree(folderPath, q, headers, options);
+  } else {
+    result = await queryDocumentsInTree(folderPath, headers, options);
+  }
 
   return {
     ...result,
@@ -87,6 +126,7 @@ async function streamDocumentContent(res, id, name, headers) {
 
 module.exports = {
   getHealth,
+  findDocumentByExactNameInTree,
   listFolders,
   listOrSearchDocuments,
   queryDocumentsInTree,

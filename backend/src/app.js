@@ -4,10 +4,12 @@ const authRoutes = require("./modules/auth/auth.route");
 const alfrescoRoutes = require("./modules/alfresco/alfresco.route");
 const alfrescoController = require("./modules/alfresco/alfresco.controller");
 const { requireUserSession } = require("./middlewares/auth");
+const { allowConfiguredCors } = require("./middlewares/cors");
 const { notFound } = require("./middlewares/errorHandler");
 
 const app = express();
 
+app.use(allowConfiguredCors);
 app.use(express.json({ limit: "1mb" }));
 
 // Frontend แยกออกจาก public เพื่อให้จัดการ UI เป็นส่วนของตัวเอง

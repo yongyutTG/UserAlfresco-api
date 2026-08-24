@@ -29,6 +29,10 @@ const config = {
   port: Number(process.env.PORT),
   alfrescoHost: process.env.ALFRESCO_HOST,
   userSessionTtlMs: Number(process.env.USER_SESSION_TTL_MS),
+  corsAllowedOrigins: String(process.env.CORS_ALLOWED_ORIGINS || "")
+    .split(",")
+    .map((origin) => origin.trim())
+    .filter(Boolean),
 };
 
 config.alfrescoCmis = `${config.alfrescoHost}/alfresco/api/-default-/public/cmis/versions/1.1/browser`;

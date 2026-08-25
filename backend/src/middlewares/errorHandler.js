@@ -1,3 +1,5 @@
+const config = require("../config/env");
+
 //ฟังชันจัดการข้อมูลข้อผิดพลาดอย่างปลอดภัย
 function safeErrorData(err) {
   const data = err.response?.data;
@@ -10,7 +12,13 @@ function safeErrorData(err) {
 //ฟังชันจัดการข้อผิดพลาดและส่ง response กลับไปยัง client
 function handleError(res, message, err) {
   const status = err.response?.status || 500;
-  res.status(status).json({ message, status, error: safeErrorData(err) });
+  const payload = { message, status };
+
+  if (config.nodeEnv !== "production") {
+    payload.error = safeErrorData(err);
+  }
+
+  res.status(status).json(payload);
 }
 //ฟังชันจัดการ route ที่ไม่พบ
 function notFound(req, res) {

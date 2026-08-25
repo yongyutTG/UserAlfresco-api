@@ -2,14 +2,19 @@ const axios = require("axios");
 const path = require("path");
 const config = require("../../config/env");
 const { cmisUrlForPath, mapCmisObject } = require("../../utils/cmis");
+
+const alfrescoHttp = axios.create({
+  timeout: config.alfrescoRequestTimeoutMs,
+});
+
 //ฟังชันดึงข้อมูลเซิร์ฟเวอร์ Alfresco
 async function getServerInfo() {
-  const result = await axios.get(`${config.alfrescoHost}/alfresco/service/api/server`);
+  const result = await alfrescoHttp.get(`${config.alfrescoHost}/alfresco/service/api/server`);
   return result.data;
 }
 //ฟังชันดึงรายการโฟลเดอร์และเอกสารจาก Alfresco ตาม path
 async function getChildrenByPath(folderPath, headers) {
-  const result = await axios.get(cmisUrlForPath(folderPath), {
+  const result = await alfrescoHttp.get(cmisUrlForPath(folderPath), {
     headers,
     params: { cmisselector: "children" },
   });
@@ -18,7 +23,7 @@ async function getChildrenByPath(folderPath, headers) {
 }
 //ฟังชันดึงข้อมูลเอกสารจาก Alfresco ตาม path
 async function getObjectByPath(objectPath, headers) {
-  const result = await axios.get(cmisUrlForPath(objectPath), {
+  const result = await alfrescoHttp.get(cmisUrlForPath(objectPath), {
     headers,
     params: { cmisselector: "object" },
   });
@@ -27,7 +32,7 @@ async function getObjectByPath(objectPath, headers) {
 }
 //ฟังชันค้นหาเอกสารใน Alfresco ตาม query
 async function queryDocuments(query, headers, options = {}) {
-  const result = await axios.get(config.alfrescoCmis, {
+  const result = await alfrescoHttp.get(config.alfrescoCmis, {
     headers,
     params: {
       cmisselector: "query",
@@ -42,7 +47,7 @@ async function queryDocuments(query, headers, options = {}) {
 }
 //ฟังชันสตรีมเนื้อหาเอกสารจาก Alfresco ตาม id
 async function getDocumentContentStream(id, headers) {
-  return axios.get(`${config.alfrescoCmis}/root`, {
+  return alfrescoHttp.get(`${config.alfrescoCmis}/root`, {
     headers,
     params: { cmisselector: "content", objectId: id },
     responseType: "stream",

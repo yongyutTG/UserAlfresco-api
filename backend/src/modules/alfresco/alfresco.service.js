@@ -1,5 +1,22 @@
 const alfrescoRepo = require("./alfresco.repo");
+const config = require("../../config/env");
 const { escapeCmisLike, escapeCmisString, mapCmisObject } = require("../../utils/cmis");
+const { parseOffset, parsePositiveInteger } = require("../../utils/pagination");
+
+function getListPaging(options = {}) {
+  return {
+    maxItems: parsePositiveInteger(options.maxItems, config.defaultMaxItems, config.maxListItems),
+    skipCount: parseOffset(options.skipCount),
+  };
+}
+
+function getSearchPaging(options = {}) {
+  return {
+    maxItems: parsePositiveInteger(options.maxItems, config.defaultMaxItems, config.maxSearchItems),
+    skipCount: parseOffset(options.skipCount),
+  };
+}
+
 //ฟังชันตรวจสอบสถานะการเชื่อมต่อกับ Alfresco
 async function getHealth() {
   const alfresco = await alfrescoRepo.getServerInfo();
@@ -13,8 +30,7 @@ async function listFolders(folderPath, headers) {
 //ฟังชันดึงรายการเอกสารจาก Alfresco ตาม path และ query
 async function queryDocumentsInTree(folderPath, headers, options = {}) {
   const folder = await alfrescoRepo.getObjectByPath(folderPath, headers);
-  const maxItems = Math.min(Number(options.maxItems || 1000), 60000);
-  const skipCount = Math.max(Number(options.skipCount || 0), 0);
+  const { maxItems, skipCount } = getListPaging(options);
   const query = `SELECT * FROM cmis:document WHERE IN_TREE('${escapeCmisString(folder.id)}')`;
   const data = await alfrescoRepo.queryDocuments(query, headers, { maxItems, skipCount });
 
@@ -32,8 +48,7 @@ async function queryDocumentsInTree(folderPath, headers, options = {}) {
 //ฟังชันค้นหาเอกสารใน Alfresco ตาม path และ query
 async function searchDocumentsInTree(folderPath, searchText, headers, options = {}) {
   const folder = await alfrescoRepo.getObjectByPath(folderPath, headers);
-  const maxItems = Math.min(Number(options.maxItems || 100), 5000);
-  const skipCount = Math.max(Number(options.skipCount || 0), 0);
+  const { maxItems, skipCount } = getSearchPaging(options);
   const normalizedSearchText = String(searchText || "").trim();
 
   if (!normalizedSearchText) {
@@ -63,8 +78,7 @@ async function searchDocumentsInTree(folderPath, searchText, headers, options = 
 //ฟังชันค้นหาเอกสารแบบชื่อไฟล์ตรงตัว เช่น 23017_116969.pdf
 async function findDocumentByExactNameInTree(folderPath, exactName, headers, options = {}) {
   const folder = await alfrescoRepo.getObjectByPath(folderPath, headers);
-  const maxItems = Math.min(Number(options.maxItems || 100), 5000);
-  const skipCount = Math.max(Number(options.skipCount || 0), 0);
+  const { maxItems, skipCount } = getSearchPaging(options);
   const normalizedExactName = String(exactName || "").trim();
 
   if (!normalizedExactName) {

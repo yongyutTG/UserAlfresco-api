@@ -6,6 +6,7 @@ const { cmisUrlForPath, mapCmisObject } = require("../../utils/cmis");
 const alfrescoHttp = axios.create({
   timeout: config.alfrescoRequestTimeoutMs,
 });
+const parentPathTimeoutMs = Math.min(config.alfrescoRequestTimeoutMs, 6000);
 
 //ฟังชันดึงข้อมูลเซิร์ฟเวอร์ Alfresco
 async function getServerInfo() {
@@ -45,6 +46,50 @@ async function queryDocuments(query, headers, options = {}) {
 
   return result.data;
 }
+//ฟังชันดึง parent folder ของเอกสารจาก Alfresco ตาม objectId
+async function getObjectParents(objectId, headers) {
+  const result = await alfrescoHttp.get(`${config.alfrescoCmis}/root`, {
+    headers,
+    timeout: parentPathTimeoutMs,
+    params: {
+      cmisselector: "parents",
+      objectId,
+      includeRelativePathSegment: true,
+    },
+  });
+  const parents = Array.isArray(result.data)
+    ? result.data
+    : result.data.objects || result.data.parents || [];
+
+  return parents.map((item) => mapCmisObject(item));
+}
+//ฟังชันแปลง CMIS objectId เป็น Alfresco nodeId สำหรับเรียก REST API
+function getNodeIdFromObjectId(objectId) {
+  const value = String(objectId || "").trim();
+  if (!value) return null;
+
+  const withoutVersion = value.split(";")[0];
+  const match = withoutVersion.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i);
+
+  return match ? match[0] : withoutVersion;
+}
+//ฟังชันดึง parent path ของเอกสารจาก Alfresco REST API ตาม objectId
+async function getNodePathByObjectId(objectId, headers) {
+  const nodeId = getNodeIdFromObjectId(objectId);
+  if (!nodeId) return null;
+
+  const result = await alfrescoHttp.get(
+    `${config.alfrescoHost}/alfresco/api/-default-/public/alfresco/versions/1/nodes/${encodeURIComponent(nodeId)}`,
+    {
+      headers,
+      timeout: parentPathTimeoutMs,
+      params: { include: "path" },
+    }
+  );
+  const entry = result.data?.entry || result.data;
+
+  return entry?.path?.name || null;
+}
 //ฟังชันสตรีมเนื้อหาเอกสารจาก Alfresco ตาม id
 async function getDocumentContentStream(id, headers) {
   return alfrescoHttp.get(`${config.alfrescoCmis}/root`, {
@@ -61,6 +106,8 @@ function safeFileName(name) {
 module.exports = {
   getChildrenByPath,
   getDocumentContentStream,
+  getNodePathByObjectId,
+  getObjectParents,
   getObjectByPath,
   getServerInfo,
   queryDocuments,

@@ -33,6 +33,7 @@ async function queryDocumentsInTree(folderPath, headers, options = {}) {
   const { maxItems, skipCount } = getListPaging(options);
   const query = `SELECT * FROM cmis:document WHERE IN_TREE('${escapeCmisString(folder.id)}')`;
   const data = await alfrescoRepo.queryDocuments(query, headers, { maxItems, skipCount });
+  const files = (data.results || []).map((item) => mapCmisObject(item));
 
   return {
     path: folderPath,
@@ -42,7 +43,7 @@ async function queryDocumentsInTree(folderPath, headers, options = {}) {
     hasMoreItems: Boolean(data.hasMoreItems),
     maxItems,
     skipCount,
-    files: (data.results || []).map((item) => mapCmisObject(item)),
+    files,
   };
 }
 //ฟังชันค้นหาเอกสารใน Alfresco ตาม path และ query
@@ -62,6 +63,7 @@ async function searchDocumentsInTree(folderPath, searchText, headers, options = 
   ].join(" ");
   //ฟังชันเรียกใช้ alfrescoRepo.queryDocuments
   const data = await alfrescoRepo.queryDocuments(query, headers, { searchAllVersions: false, maxItems, skipCount });
+  const files = (data.results || []).map((item) => mapCmisObject(item));
 
   return {
     path: folderPath,
@@ -72,7 +74,7 @@ async function searchDocumentsInTree(folderPath, searchText, headers, options = 
     hasMoreItems: Boolean(data.hasMoreItems),
     maxItems,
     skipCount,
-    files: (data.results || []).map((item) => mapCmisObject(item)),
+    files,
   };
 }
 //ฟังชันค้นหาเอกสารแบบชื่อไฟล์ตรงตัว เช่น 23017_116969.pdf
@@ -94,6 +96,7 @@ async function findDocumentByExactNameInTree(folderPath, exactName, headers, opt
   ].join(" ");
 
   const data = await alfrescoRepo.queryDocuments(query, headers, { searchAllVersions: false, maxItems, skipCount });
+  const files = (data.results || []).map((item) => mapCmisObject(item));
 
   return {
     path: folderPath,
@@ -104,7 +107,7 @@ async function findDocumentByExactNameInTree(folderPath, exactName, headers, opt
     hasMoreItems: Boolean(data.hasMoreItems),
     maxItems,
     skipCount,
-    files: (data.results || []).map((item) => mapCmisObject(item)),
+    files,
   };
 }
 //ฟังชันดึงรายการเอกสารจาก Alfresco ตาม path และ query หรือค้นหาเอกสาร

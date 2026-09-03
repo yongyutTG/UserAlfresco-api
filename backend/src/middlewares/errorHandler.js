@@ -11,7 +11,7 @@ function safeErrorData(err) {
 }
 //ฟังชันจัดการข้อผิดพลาดและส่ง response กลับไปยัง client
 function handleError(res, message, err) {
-  const status = err.response?.status || 500;
+  const status = err.statusCode || err.response?.status || 500;
   const payload = { message, status };
 
   if (config.nodeEnv !== "production") {

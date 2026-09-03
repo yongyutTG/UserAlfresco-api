@@ -17,6 +17,24 @@ function getSearchPaging(options = {}) {
   };
 }
 
+function normalizeRepositoryPath(repositoryPath) {
+  if (!repositoryPath) return null;
+  return String(repositoryPath).replace(/^\/Company Home(?=\/|$)/, "") || "/";
+}
+
+function getExactFileNameCandidates(fileName) {
+  const normalizedFileName = String(fileName || "").trim();
+  if (!normalizedFileName) return [];
+
+  const candidates = [normalizedFileName];
+
+  if (!/\.[^./\\]+$/.test(normalizedFileName)) {
+    candidates.push(`${normalizedFileName}.pdf`);
+  }
+
+  return [...new Set(candidates)];
+}
+
 //ฟังชันตรวจสอบสถานะการเชื่อมต่อกับ Alfresco
 async function getHealth() {
   const alfresco = await alfrescoRepo.getServerInfo();
@@ -81,18 +99,21 @@ async function searchDocumentsInTree(folderPath, searchText, headers, options = 
 async function findDocumentByExactNameInTree(folderPath, exactName, headers, options = {}) {
   const folder = await alfrescoRepo.getObjectByPath(folderPath, headers);
   const { maxItems, skipCount } = getSearchPaging(options);
-  const normalizedExactName = String(exactName || "").trim();
+  const exactNameCandidates = getExactFileNameCandidates(exactName);
 
-  if (!normalizedExactName) {
+  if (!exactNameCandidates.length) {
     return { path: folderPath, folderId: folder.id, exactName: "", count: 0, total: 0, hasMoreItems: false, maxItems, skipCount, files: [] };
   }
 
   //ฟังชันสร้าง query สำหรับค้นชื่อไฟล์ตรงตัวใน Alfresco
   //ใช้ = แทน LIKE เพื่อให้ _ หรือ % ถูกมองเป็นตัวอักษรจริง ไม่ใช่ wildcard
+  const exactNameFilter = exactNameCandidates
+    .map((name) => `cmis:name = '${escapeCmisString(name)}'`)
+    .join(" OR ");
   const query = [
     "SELECT * FROM cmis:document",
     `WHERE IN_TREE('${escapeCmisString(folder.id)}')`,
-    `AND cmis:name = '${escapeCmisString(normalizedExactName)}'`,
+    `AND (${exactNameFilter})`,
   ].join(" ");
 
   const data = await alfrescoRepo.queryDocuments(query, headers, { searchAllVersions: false, maxItems, skipCount });
@@ -101,7 +122,8 @@ async function findDocumentByExactNameInTree(folderPath, exactName, headers, opt
   return {
     path: folderPath,
     folderId: folder.id,
-    exactName: normalizedExactName,
+    exactName: exactNameCandidates[0],
+    exactNameCandidates,
     count: data.results?.length || 0,
     total: data.numItems ?? null,
     hasMoreItems: Boolean(data.hasMoreItems),
@@ -127,6 +149,51 @@ async function listOrSearchDocuments(folderPath, q, headers, options = {}) {
     nextSkipCount: result.hasMoreItems ? result.skipCount + result.count : null,
   };
 }
+//ฟังชันดึงตำแหน่งไฟล์จาก Alfresco ตาม id
+async function getDocumentLocation(id, headers) {
+  if (!id || id === "DOCUMENT_ID") {
+    const error = new Error("Missing real document id");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  try {
+    const nodePath = normalizeRepositoryPath(await alfrescoRepo.getNodePathByObjectId(id, headers));
+
+    if (nodePath) {
+      return {
+        id,
+        parentPath: nodePath,
+        source: "nodes-api",
+      };
+    }
+  } catch (error) {
+    // ถ้า REST nodes API ไม่รองรับ id รูปแบบนี้ ให้ลอง CMIS parents ต่อ
+  }
+
+  try {
+    const parents = await alfrescoRepo.getObjectParents(id, headers);
+    const parentPath = normalizeRepositoryPath(parents.find((parent) => parent.path)?.path);
+
+    return {
+      id,
+      parentPath,
+      source: parentPath ? "cmis-parents" : null,
+    };
+  } catch (error) {
+    return {
+      id,
+      parentPath: null,
+      source: null,
+    };
+  }
+
+  return {
+    id,
+    parentPath: null,
+    source: null,
+  };
+}
 //ฟังชันสตรีมเนื้อหาเอกสารจาก Alfresco
 async function streamDocumentContent(res, id, name, headers) {
   if (!id || id === "DOCUMENT_ID") {
@@ -144,6 +211,7 @@ async function streamDocumentContent(res, id, name, headers) {
 module.exports = {
   getHealth,
   findDocumentByExactNameInTree,
+  getDocumentLocation,
   listFolders,
   listOrSearchDocuments,
   queryDocumentsInTree,

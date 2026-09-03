@@ -4,36 +4,44 @@
 
 ```text
 UserAlfresco-api/
-├── log/
-├── public/
-│   ├── index.html              # หน้าเอกสาร API
-│   └── frontend/index.html     # หน้าบ้าน login/list/search/open file
-├── src/
-│   ├── app.js                  # ประกอบ Express app และ mount routes
-│   ├── config/
-│   │   └── env.js              # โหลด .env และรวม config เช่น port, alfrescoHost
-│   ├── middlewares/
-│   │   ├── auth.js             # requireUserSession ตรวจ Bearer token/cookie
-│   │   └── errorHandler.js     # handleError/notFound
-│   ├── modules/
-│   │   ├── auth/
-│   │   │   ├── auth.controller.js
-│   │   │   ├── auth.service.js
-│   │   │   ├── auth.repo.js
-│   │   │   ├── auth.route.js
-│   │   │   └── auth.session.js
-│   │   └── alfresco/
-│   │       ├── alfresco.controller.js
-│   │       ├── alfresco.service.js
-│   │       ├── alfresco.repo.js
-│   │       └── alfresco.route.js
-│   └── utils/
-│       ├── authHeader.js       # สร้าง Basic Auth ไป Alfresco
-│       ├── cmis.js             # helper สำหรับ CMIS path/query/object mapping
-│       └── httpSession.js      # อ่าน Bearer/cookie และ set/clear cookie
-├── server.js                   # start server เท่านั้น
-├── nodemon.json
-├── package.json
+├── backend/
+│   ├── public/
+│   │   └── index.html          # หน้าเอกสาร API
+│   ├── src/
+│   │   ├── app.js              # ประกอบ Express app และ mount routes
+│   │   ├── config/
+│   │   │   └── env.js          # โหลด .env และรวม config เช่น port, alfrescoHost
+│   │   ├── middlewares/
+│   │   │   ├── auth.js         # requireUserSession ตรวจ Bearer token/cookie
+│   │   │   ├── cors.js         # ตั้งค่า CORS
+│   │   │   ├── errorHandler.js # handleError/notFound
+│   │   │   └── rateLimit.js    # จำกัด request บาง endpoint
+│   │   ├── modules/
+│   │   │   ├── auth/
+│   │   │   │   ├── auth.controller.js
+│   │   │   │   ├── auth.service.js
+│   │   │   │   ├── auth.repo.js
+│   │   │   │   ├── auth.route.js
+│   │   │   │   └── auth.session.js
+│   │   │   └── alfresco/
+│   │   │       ├── alfresco.controller.js
+│   │   │       ├── alfresco.service.js
+│   │   │       ├── alfresco.repo.js
+│   │   │       └── alfresco.route.js
+│   │   └── utils/
+│   │       ├── authHeader.js   # สร้าง Basic Auth ไป Alfresco
+│   │       ├── cmis.js         # helper สำหรับ CMIS path/query/object mapping
+│   │       ├── httpSession.js  # อ่าน Bearer/cookie และ set/clear cookie
+│   │       └── pagination.js   # parse maxItems/skipCount
+│   ├── server.js               # start server เท่านั้น
+│   ├── nodemon.json
+│   ├── package-lock.json
+│   └── package.json
+├── docs/
+│   └── API.md                  # เอกสาร API
+├── frontend/
+│   └── documents/
+├── ecosystem.config.js         # PM2 config ชี้ cwd ไป backend/
 └── .env
 ```
 
@@ -43,7 +51,7 @@ UserAlfresco-api/
 
 ```text
 POST /auth/login
-  -> src/modules/auth/auth.route.js
+  -> backend/src/modules/auth/auth.route.js
   -> auth.controller.login()
   -> auth.service.login()
   -> auth.repo.validateAlfrescoLogin()
@@ -55,8 +63,8 @@ POST /auth/login
 
 ```text
 GET /user-api/alfresco/*
-  -> src/app.js mount requireUserSession
-  -> src/middlewares/auth.js
+  -> backend/src/app.js mount requireUserSession
+  -> backend/src/middlewares/auth.js
   -> getBearerToken() หรือ getCookie()
   -> auth.session.touchUserSession()
   -> set req.alfrescoAuthHeaders
@@ -66,7 +74,7 @@ GET /user-api/alfresco/*
 
 ```text
 GET /user-api/alfresco/folders
-  -> src/modules/alfresco/alfresco.route.js
+  -> backend/src/modules/alfresco/alfresco.route.js
   -> alfresco.controller.listFolders()
   -> alfresco.service.listFolders()
   -> alfresco.repo.getChildrenByPath()
@@ -79,12 +87,28 @@ GET /user-api/alfresco/folders
 GET /user-api/alfresco/documents
   -> alfresco.controller.listDocuments()
   -> alfresco.service.listOrSearchDocuments()
+     -> ถ้ามี exactName/fileName: findDocumentByExactNameInTree()
      -> ถ้าไม่มี q: queryDocumentsInTree()
      -> ถ้ามี q: searchDocumentsInTree()
   -> alfresco.repo.getObjectByPath()
   -> alfresco.repo.queryDocuments()
   -> Alfresco CMIS cmisselector=query
 ```
+
+หมายเหตุ: `exactName`/`fileName` เป็นการค้นแบบแม่น ถ้าส่ง `23017_116969` ระบบจะลองค้นชื่อ `23017_116969` และ `23017_116969.pdf` เท่านั้น
+
+### Get file location
+
+```text
+GET /user-api/alfresco/documents/:id/location
+  -> requireUserSession
+  -> alfresco.controller.getDocumentLocation()
+  -> alfresco.service.getDocumentLocation()
+  -> alfresco.repo.getNodePathByObjectId()
+  -> ถ้าไม่ได้ตำแหน่ง จะ fallback ไป alfresco.repo.getObjectParents()
+```
+
+เส้นนี้แยกจาก list documents เพื่อไม่ให้รายการเอกสารหลักโหลดช้า
 
 ### Open file
 
@@ -203,6 +227,14 @@ http://172.17.1.21/alfresco/api/-default-/public/alfresco/versions/1
 GET /nodes/-my-/children
 ```
 
+ในโปรเจคนี้ REST v1 ถูกใช้เฉพาะเส้นดูตำแหน่งไฟล์เป็นทางเลือกแรก:
+
+```text
+GET /user-api/alfresco/documents/:id/location
+ -> ลอง REST v1 /nodes/{nodeId}?include=path
+ -> ถ้าไม่ได้ตำแหน่ง จะ fallback ไป CMIS parents
+```
+
 สรุปการใช้งานในโปรเจคนี้:
 
 ```text
@@ -210,6 +242,6 @@ GET /nodes/-my-/children
 ค้นหาเอกสารใน Alfresco     -> ใช้ CMIS Query
 เปิดไฟล์ PDF               -> ใช้ CMIS Content
 ดู user/site/server         -> ใช้ Web Script API
-REST v1 /nodes/...          -> ไม่เหมาะกับ Alfresco 4.2
+REST v1 /nodes/...          -> ใช้เฉพาะ location แบบมี CMIS fallback
 ```
 

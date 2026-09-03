@@ -37,6 +37,15 @@ async function listDocuments(req, res) {
     handleError(res, "ไม่สามารถรายการเอกสารจาก Alfresco ได้", err);
   }
 }
+//ฟังชันดึงตำแหน่งไฟล์
+async function getDocumentLocation(req, res) {
+  try {
+    const result = await alfrescoService.getDocumentLocation(req.params.id, req.alfrescoAuthHeaders);
+    res.json(result);
+  } catch (err) {
+    handleError(res, "ไม่สามารถดึงตำแหน่งไฟล์จาก Alfresco ได้", err);
+  }
+}
 //ฟังชันสตรีมเนื้อหาเอกสารจาก Alfresco
 async function streamDocumentContent(req, res) {
   try {
@@ -48,6 +57,7 @@ async function streamDocumentContent(req, res) {
 
 module.exports = {
   health,
+  getDocumentLocation,
   listDocuments,
   listFolders,
   streamDocumentContent,

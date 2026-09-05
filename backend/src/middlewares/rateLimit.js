@@ -1,6 +1,7 @@
 function createRateLimiter(options = {}) {
   const windowMs = options.windowMs || 60000;
   const maxRequests = options.maxRequests || 10;
+  const message = options.message || "Too many requests. Please try again later.";
   const buckets = new Map();
 
   function getClientKey(req) {
@@ -23,7 +24,7 @@ function createRateLimiter(options = {}) {
       const retryAfterSeconds = Math.ceil((current.resetAt - now) / 1000);
       res.setHeader("Retry-After", String(retryAfterSeconds));
       return res.status(429).json({
-        message: "Too many login attempts. Please try again later.",
+        message,
         status: 429,
       });
     }

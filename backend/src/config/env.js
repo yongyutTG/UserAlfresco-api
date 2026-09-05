@@ -41,6 +41,8 @@ const config = {
   maxSearchItems: numberFromEnv("MAX_SEARCH_ITEMS", 1000),
   loginRateLimitWindowMs: numberFromEnv("LOGIN_RATE_LIMIT_WINDOW_MS", 60000),
   loginRateLimitMax: numberFromEnv("LOGIN_RATE_LIMIT_MAX", 10),
+  apiRateLimitWindowMs: numberFromEnv("API_RATE_LIMIT_WINDOW_MS", 60000),
+  apiRateLimitMax: numberFromEnv("API_RATE_LIMIT_MAX", 120),
   corsAllowedOrigins: String(process.env.CORS_ALLOWED_ORIGINS || "")
     .split(",")
     .map((origin) => origin.trim())

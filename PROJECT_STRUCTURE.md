@@ -10,12 +10,12 @@ UserAlfresco-api/
 │   ├── src/
 │   │   ├── app.js              # ประกอบ Express app และ mount routes
 │   │   ├── config/
-│   │   │   └── env.js          # โหลด .env และรวม config เช่น port, alfrescoHost
+│   │   │   └── env.js          # โหลด .env และรวม config เช่น port, alfrescoHost, CORS, rate limit
 │   │   ├── middlewares/
 │   │   │   ├── auth.js         # requireUserSession ตรวจ Bearer token/cookie
 │   │   │   ├── cors.js         # ตั้งค่า CORS
 │   │   │   ├── errorHandler.js # handleError/notFound
-│   │   │   └── rateLimit.js    # จำกัด request บาง endpoint
+│   │   │   └── rateLimit.js    # จำกัด request แยก login/API
 │   │   ├── modules/
 │   │   │   ├── auth/
 │   │   │   │   ├── auth.controller.js
@@ -52,6 +52,7 @@ UserAlfresco-api/
 ```text
 POST /auth/login
   -> backend/src/modules/auth/auth.route.js
+  -> loginRateLimiter
   -> auth.controller.login()
   -> auth.service.login()
   -> auth.repo.validateAlfrescoLogin()
@@ -59,10 +60,14 @@ POST /auth/login
   -> setUserSessionCookie()
 ```
 
+`loginRateLimiter` ใช้ค่า `LOGIN_RATE_LIMIT_WINDOW_MS` และ `LOGIN_RATE_LIMIT_MAX`
+
 ### ตรวจ session ก่อนเข้า API
 
 ```text
 GET /user-api/alfresco/*
+  -> backend/src/app.js mount apiRateLimiter
+  -> backend/src/middlewares/rateLimit.js
   -> backend/src/app.js mount requireUserSession
   -> backend/src/middlewares/auth.js
   -> getBearerToken() หรือ getCookie()
@@ -70,10 +75,26 @@ GET /user-api/alfresco/*
   -> set req.alfrescoAuthHeaders
 ```
 
+`apiRateLimiter` ใช้ค่า `API_RATE_LIMIT_WINDOW_MS` และ `API_RATE_LIMIT_MAX`
+
+### CORS
+
+```text
+ทุก request
+  -> backend/src/app.js mount allowConfiguredCors
+  -> backend/src/middlewares/cors.js
+  -> ตรวจ Origin จาก CORS_ALLOWED_ORIGINS
+  -> ถ้าเป็น OPTIONS จะตอบ 204
+```
+
+ถ้าตั้ง `CORS_ALLOWED_ORIGINS=*` จะอนุญาตทุก origin โดยตอบ `Access-Control-Allow-Origin` เป็น origin ที่ request ส่งมา เพื่อให้ใช้กับ cookie/session ได้
+
 ### List folders
 
 ```text
 GET /user-api/alfresco/folders
+  -> apiRateLimiter
+  -> requireUserSession
   -> backend/src/modules/alfresco/alfresco.route.js
   -> alfresco.controller.listFolders()
   -> alfresco.service.listFolders()
@@ -85,6 +106,8 @@ GET /user-api/alfresco/folders
 
 ```text
 GET /user-api/alfresco/documents
+  -> apiRateLimiter
+  -> requireUserSession
   -> alfresco.controller.listDocuments()
   -> alfresco.service.listOrSearchDocuments()
      -> ถ้ามี exactName/fileName: findDocumentByExactNameInTree()
@@ -101,6 +124,7 @@ GET /user-api/alfresco/documents
 
 ```text
 GET /user-api/alfresco/documents/:id/location
+  -> apiRateLimiter
   -> requireUserSession
   -> alfresco.controller.getDocumentLocation()
   -> alfresco.service.getDocumentLocation()
@@ -114,6 +138,7 @@ GET /user-api/alfresco/documents/:id/location
 
 ```text
 GET /user-api/alfresco/documents/:id/content
+  -> apiRateLimiter
   -> requireUserSession
   -> alfresco.controller.streamDocumentContent()
   -> alfresco.service.streamDocumentContent()
@@ -130,7 +155,7 @@ GET /user-api/alfresco/documents/:id/content
 | controller | อ่าน req/res, validate เบื้องต้น, ส่ง response |
 | service | business logic เช่นเลือก list/search, สร้าง session |
 | repo | ติดต่อ external system เช่น Alfresco CMIS |
-| middleware | งานคั่นกลาง เช่น auth, error |
+| middleware | งานคั่นกลาง เช่น CORS, rate limit, auth, error |
 | utils | function กลางที่ไม่ผูกกับ module ใด module หนึ่ง |
 
 ## Note: Alfresco API หลัก ๆ สำหรับ Alfresco 4.2

@@ -4,8 +4,9 @@ const config = require("../config/env");
 // ตัวอย่าง origin: http://localhost/Alfresco เรียกไป http://localhost:3001
 function allowConfiguredCors(req, res, next) {
   const origin = req.get("origin");
+  const allowAllOrigins = config.corsAllowedOrigins.includes("*");
 
-  if (origin && config.corsAllowedOrigins.includes(origin)) {
+  if (origin && (allowAllOrigins || config.corsAllowedOrigins.includes(origin))) {
     res.setHeader("Access-Control-Allow-Origin", origin);
     res.setHeader("Vary", "Origin");
     res.setHeader("Access-Control-Allow-Credentials", "true");

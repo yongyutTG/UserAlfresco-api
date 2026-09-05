@@ -8,6 +8,7 @@ const router = express.Router();
 const loginRateLimiter = createRateLimiter({
   windowMs: config.loginRateLimitWindowMs,
   maxRequests: config.loginRateLimitMax,
+  message: "Too many login attempts. Please try again later.",
 });
 
 //ฟังชันจัดการ route สำหรับการเข้าสู่ระบบ, ตรวจสอบข้อมูลผู้ใช้ และออกจากระบบ

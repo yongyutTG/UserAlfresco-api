@@ -19,6 +19,52 @@ http://localhost:3001
 
 ---
 
+# 0. Environment / CORS / Rate Limit
+
+ตั้งค่าหลักในไฟล์ `.env` ที่ root โปรเจกต์:
+
+```env
+ALFRESCO_HOST=http://{ IP Server }
+PORT=3001
+USER_SESSION_TTL_MS=28800000
+LOGIN_RATE_LIMIT_WINDOW_MS=60000
+LOGIN_RATE_LIMIT_MAX=10
+API_RATE_LIMIT_WINDOW_MS=60000
+API_RATE_LIMIT_MAX=120
+CORS_ALLOWED_ORIGINS=http://localhost:5173,http://localhost:3000
+```
+
+## CORS
+
+ถ้า frontend เรียก API จาก browser คนละ origin ให้เพิ่ม origin ใน `CORS_ALLOWED_ORIGINS` โดยคั่นด้วย comma:
+
+```env
+CORS_ALLOWED_ORIGINS=http://localhost:5173,http://localhost:3000
+```
+
+ถ้าต้องการอนุญาตทุก origin:
+
+```env
+CORS_ALLOWED_ORIGINS=*
+```
+
+หมายเหตุ: โปรเจกต์นี้ใช้ cookie session ด้วย ดังนั้นเมื่อใช้ `*` backend จะตอบ `Access-Control-Allow-Origin` เป็น origin ที่ request ส่งมา แทนการตอบ `*` ตรง ๆ เพื่อให้ใช้ร่วมกับ credential ได้ถูกต้อง
+
+## Rate Limit
+
+Rate limit แยกเป็น 2 ชุด:
+
+| Config | ใช้กับ | Default |
+|---|---|---|
+| `LOGIN_RATE_LIMIT_WINDOW_MS` | ช่วงเวลาของ login limiter | `60000` |
+| `LOGIN_RATE_LIMIT_MAX` | จำนวนครั้งสูงสุดของ `POST /auth/login` ต่อ IP ในช่วงเวลา | `10` |
+| `API_RATE_LIMIT_WINDOW_MS` | ช่วงเวลาของ API limiter | `60000` |
+| `API_RATE_LIMIT_MAX` | จำนวนครั้งสูงสุดของ `/user-api/alfresco/*` ต่อ IP ในช่วงเวลา | `120` |
+
+ถ้าเกิน limit จะได้ HTTP `429` พร้อม header `Retry-After`
+
+---
+
 # 1. ตรวจสอบหน้าเอกสาร API
 
 ## Endpoint
@@ -832,6 +878,32 @@ Authorization: Bearer ACCESS_TOKEN
 ```text
 Postman -> Body -> raw -> JSON
 Content-Type: application/json
+```
+
+## เรียกถี่เกิน Rate Limit
+
+ถ้าเรียก `/auth/login` ถี่เกินค่า `LOGIN_RATE_LIMIT_*` จะเจอ:
+
+```json
+{
+  "message": "Too many login attempts. Please try again later.",
+  "status": 429
+}
+```
+
+ถ้าเรียก `/user-api/alfresco/*` ถี่เกินค่า `API_RATE_LIMIT_*` จะเจอ:
+
+```json
+{
+  "message": "Too many API requests. Please try again later.",
+  "status": 429
+}
+```
+
+วิธีแก้:
+
+```text
+รอตามจำนวนวินาทีใน header Retry-After หรือลดความถี่การเรียก API
 ```
 
 ---

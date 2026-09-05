@@ -24,19 +24,34 @@ Node.js เรียก Alfresco CMIS ด้วยสิทธิ์ของ us
 
 ```bash
 cd C:\xampp\htdocs\UserAlfresco-api
-copy .env.example .env
 cd backend
 npm install
 npm run dev
 ```
 
-ค่า default:
+สร้างหรือแก้ไฟล์ `.env` ที่ root โปรเจกต์:
 
 ```env
 ALFRESCO_HOST=http://{ IP Server }
 PORT=3001
 USER_SESSION_TTL_MS=28800000
+LOGIN_RATE_LIMIT_WINDOW_MS=60000
+LOGIN_RATE_LIMIT_MAX=10
+API_RATE_LIMIT_WINDOW_MS=60000
+API_RATE_LIMIT_MAX=120
+CORS_ALLOWED_ORIGINS=http://localhost:5173,http://localhost:3000
 ```
+
+ถ้าต้องการอนุญาต CORS ทุก origin ให้ใช้:
+
+```env
+CORS_ALLOWED_ORIGINS=*
+```
+
+Rate limit แยกเป็น 2 ชุด:
+
+- `LOGIN_RATE_LIMIT_*` ใช้เฉพาะ `POST /auth/login`
+- `API_RATE_LIMIT_*` ใช้กับทุกเส้นใต้ `/user-api/alfresco/*`
 
 ## Project Structure
 

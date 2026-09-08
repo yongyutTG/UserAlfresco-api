@@ -40,7 +40,7 @@ async function listDocuments(req, res) {
 //ฟังชันดึงตำแหน่งไฟล์
 async function getDocumentLocation(req, res) {
   try {
-    const result = await alfrescoService.getDocumentLocation(req.params.id, req.alfrescoAuthHeaders);
+    const result = await alfrescoService.getDocumentLocation(req.params.id || req.query.id, req.alfrescoAuthHeaders);
     res.json(result);
   } catch (err) {
     handleError(res, "ไม่สามารถดึงตำแหน่งไฟล์จาก Alfresco ได้", err);

@@ -15,7 +15,7 @@ http://localhost:3001
 | Header | ส่ง token | `Authorization: Bearer ACCESS_TOKEN` |
 | JSON Body | ส่ง username/password ตอน login | `{ "username": "...", "password": "..." }` |
 | Query String | ส่ง path, keyword, pagination | `?folderPath=...&exactName=23017_116969&maxItems=17` |
-| Path Parameter | ส่ง id เอกสารใน URL | `/documents/{id}/content`, `/documents/{id}/location` |
+| Path Parameter | ส่ง id เอกสารใน URL | `/documents/{id}/content` และ route เก่าของ location |
 
 ---
 
@@ -585,12 +585,14 @@ Authorization: Basic base64(username:password)
 ## Endpoint
 
 ```http
-GET /user-api/alfresco/documents/{id}/location
+GET /user-api/alfresco/documents/location
 ```
 
 ## ใช้ทำอะไร
 
 ดึงตำแหน่ง folder ของเอกสารแบบเฉพาะไฟล์ ใช้เมื่อผู้ใช้หรือระบบต้องการดู location ของไฟล์นั้นเท่านั้น เพื่อไม่ให้ API รายการเอกสารหลักโหลดช้า
+
+เส้นหลักปัจจุบันส่ง `id` ผ่าน query string เพื่อเลี่ยงปัญหา `Route not found` เมื่อ `id` ของ Alfresco มีอักขระพิเศษหรือมีรูปแบบที่ไม่เหมาะกับ path parameter
 
 ## ต้องแนบ token ไหม
 
@@ -600,17 +602,25 @@ GET /user-api/alfresco/documents/{id}/location
 Authorization: Bearer ACCESS_TOKEN
 ```
 
-## Path Parameters
+## Query Parameters
 
 | ชื่อ | อยู่ที่ | จำเป็น | ตัวอย่าง | ความหมาย |
 |---|---|---|---|---|
-| `id` | Path parameter | ใช่ | `7b815e16-a594-4864-9665-cfda64e8d880%3B1.0` | id ของเอกสาร |
+| `id` | Query string | ใช่ | `7b815e16-a594-4864-9665-cfda64e8d880;1.0` | id ของเอกสาร |
 
 ## ตัวอย่าง Request
 
 ```http
-GET http://localhost:3001/user-api/alfresco/documents/7b815e16-a594-4864-9665-cfda64e8d880%3B1.0/location
+GET http://localhost:3001/user-api/alfresco/documents/location?id=7b815e16-a594-4864-9665-cfda64e8d880%3B1.0
 Authorization: Bearer ACCESS_TOKEN
+```
+
+## Route เก่าสำหรับรองรับโค้ดเดิม
+
+ยังรองรับ route เดิมนี้อยู่ แต่ไม่แนะนำให้ใช้กับงานใหม่:
+
+```http
+GET /user-api/alfresco/documents/{id}/location
 ```
 
 ## ตัวอย่าง Response
@@ -787,7 +797,7 @@ Authorization: Bearer {{alfresco_access_token}}
 นำ `id` จาก response ไปใช้:
 
 ```http
-GET http://localhost:3001/user-api/alfresco/documents/{id}/location
+GET http://localhost:3001/user-api/alfresco/documents/location?id={id}
 Authorization: Bearer {{alfresco_access_token}}
 ```
 
@@ -813,7 +823,7 @@ Authorization: Bearer {{alfresco_access_token}}
 | `POST` | `/auth/logout` | ต้อง | Header Bearer | logout token |
 | `GET` | `/user-api/alfresco/folders` | ต้อง | Query string | ดู folder |
 | `GET` | `/user-api/alfresco/documents` | ต้อง | Query string | list/search เอกสาร |
-| `GET` | `/user-api/alfresco/documents/{id}/location` | ต้อง | Path param | ดูตำแหน่งไฟล์ |
+| `GET` | `/user-api/alfresco/documents/location?id=...` | ต้อง | Query string | ดูตำแหน่งไฟล์ |
 | `GET` | `/user-api/alfresco/documents/{id}/content` | ต้อง | Path param + query string | เปิด/ดาวน์โหลดไฟล์ |
 
 ---
@@ -826,7 +836,7 @@ Authorization: Bearer {{alfresco_access_token}}
 | `POST /auth/login` | `GET /alfresco/api/-default-/public/cmis/versions/1.1/browser/root?cmisselector=object` | CMIS |
 | `GET /user-api/alfresco/folders?path=...` | `GET /alfresco/api/-default-/public/cmis/versions/1.1/browser/root/{path}?cmisselector=children` | CMIS |
 | `GET /user-api/alfresco/documents?folderPath=...` | `GET /alfresco/api/-default-/public/cmis/versions/1.1/browser/root/{folderPath}?cmisselector=object` แล้ว `GET /alfresco/api/-default-/public/cmis/versions/1.1/browser?cmisselector=query&q=...` | CMIS |
-| `GET /user-api/alfresco/documents/{id}/location` | ลอง `GET /alfresco/api/-default-/public/alfresco/versions/1/nodes/{nodeId}?include=path` ก่อน ถ้าไม่ได้ใช้ `GET /alfresco/api/-default-/public/cmis/versions/1.1/browser/root?cmisselector=parents&objectId={id}` | REST v1 fallback CMIS |
+| `GET /user-api/alfresco/documents/location?id=...` | ลอง `GET /alfresco/api/-default-/public/alfresco/versions/1/nodes/{nodeId}?include=path` ก่อน ถ้าไม่ได้ใช้ `GET /alfresco/api/-default-/public/cmis/versions/1.1/browser/root?cmisselector=parents&objectId={id}` | REST v1 fallback CMIS |
 | `GET /user-api/alfresco/documents/{id}/content` | `GET /alfresco/api/-default-/public/cmis/versions/1.1/browser/root?cmisselector=content&objectId={id}` | CMIS |
 
 หมายเหตุ: `{path}` และ `{folderPath}` จะถูก encode ทีละ segment ในโค้ด `backend/src/utils/cmis.js`

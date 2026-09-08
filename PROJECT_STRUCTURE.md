@@ -123,7 +123,7 @@ GET /user-api/alfresco/documents
 ### Get file location
 
 ```text
-GET /user-api/alfresco/documents/:id/location
+GET /user-api/alfresco/documents/location?id=DOCUMENT_ID
   -> apiRateLimiter
   -> requireUserSession
   -> alfresco.controller.getDocumentLocation()
@@ -132,7 +132,9 @@ GET /user-api/alfresco/documents/:id/location
   -> ถ้าไม่ได้ตำแหน่ง จะ fallback ไป alfresco.repo.getObjectParents()
 ```
 
-เส้นนี้แยกจาก list documents เพื่อไม่ให้รายการเอกสารหลักโหลดช้า
+เส้นนี้แยกจาก list documents เพื่อไม่ให้รายการเอกสารหลักโหลดช้า และใช้ `id` ผ่าน query string เป็นหลักเพื่อเลี่ยงปัญหา route ไม่เจอเมื่อ `id` ของ Alfresco มีอักขระพิเศษ
+
+ยังมี route เก่า `GET /user-api/alfresco/documents/:id/location` สำหรับรองรับโค้ดเดิม
 
 ### Open file
 
@@ -255,7 +257,7 @@ GET /nodes/-my-/children
 ในโปรเจคนี้ REST v1 ถูกใช้เฉพาะเส้นดูตำแหน่งไฟล์เป็นทางเลือกแรก:
 
 ```text
-GET /user-api/alfresco/documents/:id/location
+GET /user-api/alfresco/documents/location?id=DOCUMENT_ID
  -> ลอง REST v1 /nodes/{nodeId}?include=path
  -> ถ้าไม่ได้ตำแหน่ง จะ fallback ไป CMIS parents
 ```

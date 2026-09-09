@@ -37,6 +37,31 @@ async function listDocuments(req, res) {
     handleError(res, "ไม่สามารถรายการเอกสารจาก Alfresco ได้", err);
   }
 }
+//ฟังชันค้นหาเอกสารโดยแยก endpoint จาก list เพื่อให้ dev ภายนอกใช้งานชัดเจน
+async function searchDocuments(req, res) {
+  try {
+    const folderPath = req.query.folderPath || req.query.path || "/Sites/tg-saving/documentLibrary";
+    const q = req.query.q || req.query.keyword || req.query.name;
+    const exactName = req.query.exactName || req.query.fileName;
+
+    if (!q && !exactName) {
+      return res.status(400).json({
+        message: "Missing search parameter: q or exactName is required",
+        status: 400,
+      });
+    }
+
+    const options = { maxItems: req.query.maxItems, skipCount: req.query.skipCount, exactName };
+    const result = await alfrescoService.searchDocuments(folderPath, q, req.alfrescoAuthHeaders, options);
+
+    res.json({
+      ...result,
+      username: req.alfrescoUsername,
+    });
+  } catch (err) {
+    handleError(res, "ไม่สามารถค้นหาเอกสารจาก Alfresco ได้", err);
+  }
+}
 //ฟังชันดึงตำแหน่งไฟล์
 async function getDocumentLocation(req, res) {
   try {
@@ -60,5 +85,6 @@ module.exports = {
   getDocumentLocation,
   listDocuments,
   listFolders,
+  searchDocuments,
   streamDocumentContent,
 };

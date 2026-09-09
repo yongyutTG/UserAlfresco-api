@@ -139,10 +139,17 @@ GET /user-api/alfresco/folders?path=/Sites/tg-saving/documentLibrary
 Authorization: Bearer <accessToken>
 ```
 
-### List/Search documents
+### List documents
 
 ```http
-GET /user-api/alfresco/documents?folderPath=/Sites/tg-saving/documentLibrary/การเงิน&q=026277&maxItems=20&skipCount=0
+GET /user-api/alfresco/documents?folderPath=/Sites/tg-saving/documentLibrary/การเงิน&maxItems=20&skipCount=0
+Authorization: Bearer <accessToken>
+```
+
+### Search documents
+
+```http
+GET /user-api/alfresco/documents/search?folderPath=/Sites/tg-saving/documentLibrary/การเงิน&q=026277&maxItems=20&skipCount=0
 Authorization: Bearer <accessToken>
 ```
 

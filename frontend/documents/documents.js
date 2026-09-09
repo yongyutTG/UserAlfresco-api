@@ -193,7 +193,8 @@ const documentLibraryPath = "/Sites/tg-saving/documentLibrary";
         skipCount: String(state.skipCount),
       });
       if (state.q) params.set("q", state.q);
-      return `/user-api/alfresco/documents?${params.toString()}`;
+      const endpoint = state.q ? "/user-api/alfresco/documents/search" : "/user-api/alfresco/documents";
+      return `${endpoint}?${params.toString()}`;
     }
 
     function renderRows(files) {

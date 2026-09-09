@@ -149,6 +149,21 @@ async function listOrSearchDocuments(folderPath, q, headers, options = {}) {
     nextSkipCount: result.hasMoreItems ? result.skipCount + result.count : null,
   };
 }
+//ฟังชันค้นหาเอกสารสำหรับ endpoint /documents/search โดยเฉพาะ
+async function searchDocuments(folderPath, q, headers, options = {}) {
+  let result;
+
+  if (options.exactName && String(options.exactName).trim()) {
+    result = await findDocumentByExactNameInTree(folderPath, options.exactName, headers, options);
+  } else {
+    result = await searchDocumentsInTree(folderPath, q, headers, options);
+  }
+
+  return {
+    ...result,
+    nextSkipCount: result.hasMoreItems ? result.skipCount + result.count : null,
+  };
+}
 //ฟังชันดึงตำแหน่งไฟล์จาก Alfresco ตาม id
 async function getDocumentLocation(id, headers) {
   if (!id || id === "DOCUMENT_ID") {
@@ -215,6 +230,7 @@ module.exports = {
   listFolders,
   listOrSearchDocuments,
   queryDocumentsInTree,
+  searchDocuments,
   searchDocumentsInTree,
   streamDocumentContent,
 };

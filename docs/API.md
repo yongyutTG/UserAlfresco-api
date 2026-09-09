@@ -389,7 +389,7 @@ cmis:baseTypeId = cmis:folder
 
 ---
 
-# 7. List เอกสาร / ค้นหาเอกสาร
+# 7. List เอกสาร
 
 ## Endpoint
 
@@ -399,7 +399,9 @@ GET /user-api/alfresco/documents
 
 ## ใช้ทำอะไร
 
-ดึงรายการเอกสาร หรือค้นหาเอกสารใต้ folder ที่ระบุ โดยค้นรวมใน folder ย่อยด้วย `IN_TREE`
+ดึงรายการเอกสารใต้ folder ที่ระบุ โดยค้นรวมใน folder ย่อยด้วย `IN_TREE`
+
+หมายเหตุ: endpoint นี้ใช้สำหรับ list รายการเอกสาร ถ้าต้องการค้นหาชื่อไฟล์ให้ใช้ endpoint แยก `GET /user-api/alfresco/documents/search`
 
 ## ต้องแนบ token ไหม
 
@@ -415,11 +417,6 @@ Authorization: Bearer ACCESS_TOKEN
 |---|---|---|---|---|---|
 | `folderPath` | Query string | ไม่จำเป็น | `/Sites/tg-saving/documentLibrary` | `/Sites/tg-saving/documentLibrary` | path ของ folder ที่ต้องการค้น |
 | `path` | Query string | ไม่จำเป็น | ใช้แทน `folderPath` ได้ | `/Sites/tg-saving/documentLibrary/การเงิน` | alias ของ `folderPath` |
-| `q` | Query string | ไม่จำเป็น | ว่าง | `NPR` | keyword สำหรับค้นจากชื่อไฟล์ |
-| `keyword` | Query string | ไม่จำเป็น | ว่าง | `NPR` | alias ของ `q` |
-| `name` | Query string | ไม่จำเป็น | ว่าง | `026277` | alias ของ `q` |
-| `exactName` | Query string | ไม่จำเป็น | ว่าง | `23017_116969` | ค้นชื่อไฟล์แบบแม่น รองรับชื่อไม่ใส่ `.pdf` |
-| `fileName` | Query string | ไม่จำเป็น | ว่าง | `23017_116969` | alias ของ `exactName` |
 | `maxItems` | Query string | ไม่จำเป็น | `100` | `17` | จำนวนรายการต่อหน้า |
 | `skipCount` | Query string | ไม่จำเป็น | `0` | `0`, `100`, `200` | จำนวนรายการที่ข้าม ใช้ทำ pagination |
 
@@ -430,17 +427,94 @@ GET http://localhost:3001/user-api/alfresco/documents?folderPath=/Sites/tg-savin
 Authorization: Bearer ACCESS_TOKEN
 ```
 
+## ข้างใน backend ไปเรียก CMIS อะไร
+
+เส้นนี้ทำงาน 2 จังหวะ
+
+### จังหวะที่ 1: หา folder object จาก path
+
+backend จะเรียก CMIS เพื่อหา `cmis:objectId` ของ folder ก่อน:
+
+```http
+GET {ALFRESCO_HOST}/alfresco/api/-default-/public/cmis/versions/1.1/browser/root/Sites/tg-saving/documentLibrary/การเงิน?cmisselector=object
+Authorization: Basic base64(username:password)
+```
+
+ค่าที่ได้สำคัญคือ:
+
+```text
+cmis:objectId
+```
+
+### จังหวะที่ 2: list เอกสารทั้งหมดใน folder tree
+
+backend จะใช้ CMIS Query:
+
+```sql
+SELECT * FROM cmis:document
+WHERE IN_TREE('folderObjectId')
+```
+
+แล้วเรียก:
+
+```http
+GET {ALFRESCO_HOST}/alfresco/api/-default-/public/cmis/versions/1.1/browser
+  ?cmisselector=query
+  &q=SELECT * FROM cmis:document WHERE IN_TREE('folderObjectId')
+  &maxItems=17
+  &skipCount=0
+Authorization: Basic base64(username:password)
+```
+
+---
+
+# 8. Search เอกสาร
+
+## Endpoint
+
+```http
+GET /user-api/alfresco/documents/search
+```
+
+## ใช้ทำอะไร
+
+ค้นหาเอกสารใต้ folder ที่ระบุ โดยค้นรวมใน folder ย่อยด้วย `IN_TREE`
+
+## ต้องแนบ token ไหม
+
+ต้องแนบ
+
+```http
+Authorization: Bearer ACCESS_TOKEN
+```
+
+## Query Parameters
+
+| ชื่อ | อยู่ที่ | จำเป็น | Default | ตัวอย่าง | ความหมาย |
+|---|---|---|---|---|---|
+| `folderPath` | Query string | ไม่จำเป็น | `/Sites/tg-saving/documentLibrary` | `/Sites/tg-saving/documentLibrary` | path ของ folder ที่ต้องการค้น |
+| `path` | Query string | ไม่จำเป็น | ใช้แทน `folderPath` ได้ | `/Sites/tg-saving/documentLibrary/การเงิน` | alias ของ `folderPath` |
+| `q` | Query string | ไม่จำเป็น ถ้ามี `exactName` | ว่าง | `NPR` | keyword สำหรับค้นจากชื่อไฟล์แบบบางส่วน |
+| `keyword` | Query string | ไม่จำเป็น | ว่าง | `NPR` | alias ของ `q` |
+| `name` | Query string | ไม่จำเป็น | ว่าง | `026277` | alias ของ `q` |
+| `exactName` | Query string | ไม่จำเป็น ถ้ามี `q` | ว่าง | `23017_116969` | ค้นชื่อไฟล์แบบแม่น รองรับชื่อไม่ใส่ `.pdf` |
+| `fileName` | Query string | ไม่จำเป็น | ว่าง | `23017_116969` | alias ของ `exactName` |
+| `maxItems` | Query string | ไม่จำเป็น | `100` | `17` | จำนวนรายการต่อหน้า ใช้ config เดิม |
+| `skipCount` | Query string | ไม่จำเป็น | `0` | `0`, `100`, `200` | จำนวนรายการที่ข้าม ใช้ทำ pagination |
+
+หมายเหตุ: endpoint นี้ต้องส่งอย่างน้อย `q` หรือ `exactName` ถ้าไม่ส่งจะได้ HTTP `400`
+
 ## ตัวอย่างค้นหา NPR
 
 ```http
-GET http://localhost:3001/user-api/alfresco/documents?folderPath=/Sites/tg-saving/documentLibrary&q=NPR&maxItems=17&skipCount=0
+GET http://localhost:3001/user-api/alfresco/documents/search?folderPath=/Sites/tg-saving/documentLibrary&q=NPR&maxItems=17&skipCount=0
 Authorization: Bearer ACCESS_TOKEN
 ```
 
 ## ตัวอย่างค้นหาเฉพาะโฟลเดอร์การเงิน
 
 ```http
-GET http://localhost:3001/user-api/alfresco/documents?folderPath=/Sites/tg-saving/documentLibrary/การเงิน&q=026277&maxItems=17&skipCount=0
+GET http://localhost:3001/user-api/alfresco/documents/search?folderPath=/Sites/tg-saving/documentLibrary/การเงิน&q=026277&maxItems=17&skipCount=0
 Authorization: Bearer ACCESS_TOKEN
 ```
 
@@ -449,7 +523,7 @@ Authorization: Bearer ACCESS_TOKEN
 ใช้กรณีต้องการค้นแบบแม่น เช่น dev ส่งเลขที่สัญญาหรือชื่อไฟล์ตรง ๆ จะใส่ `.pdf` หรือไม่ใส่ก็ได้
 
 ```http
-GET http://localhost:3001/user-api/alfresco/documents?folderPath=/Sites/tg-saving/documentLibrary&exactName=23017_116969&maxItems=17&skipCount=0
+GET http://localhost:3001/user-api/alfresco/documents/search?folderPath=/Sites/tg-saving/documentLibrary&exactName=23017_116969&maxItems=17&skipCount=0
 Authorization: Bearer ACCESS_TOKEN
 ```
 
@@ -481,27 +555,7 @@ Authorization: Basic base64(username:password)
 cmis:objectId
 ```
 
-### จังหวะที่ 2A: ถ้าไม่ได้ส่ง q จะ list เอกสารทั้งหมดใน folder tree
-
-backend จะใช้ CMIS Query:
-
-```sql
-SELECT * FROM cmis:document
-WHERE IN_TREE('folderObjectId')
-```
-
-แล้วเรียก:
-
-```http
-GET {ALFRESCO_HOST}/alfresco/api/-default-/public/cmis/versions/1.1/browser
-  ?cmisselector=query
-  &q=SELECT * FROM cmis:document WHERE IN_TREE('folderObjectId')
-  &maxItems=17
-  &skipCount=0
-Authorization: Basic base64(username:password)
-```
-
-### จังหวะที่ 2B: ถ้าส่ง q / keyword / name จะค้นจากชื่อไฟล์
+### จังหวะที่ 2A: ถ้าส่ง q / keyword / name จะค้นจากชื่อไฟล์
 
 backend จะใช้ CMIS Query:
 
@@ -523,7 +577,7 @@ GET {ALFRESCO_HOST}/alfresco/api/-default-/public/cmis/versions/1.1/browser
 Authorization: Basic base64(username:password)
 ```
 
-### จังหวะที่ 2C: ถ้าส่ง exactName / fileName จะค้นชื่อไฟล์ตรงตัว
+### จังหวะที่ 2B: ถ้าส่ง exactName / fileName จะค้นชื่อไฟล์ตรงตัว
 
 backend จะใช้ CMIS Query:
 
@@ -580,7 +634,7 @@ Authorization: Basic base64(username:password)
 
 ---
 
-# 8. ดูตำแหน่งไฟล์
+# 9. ดูตำแหน่งไฟล์
 
 ## Endpoint
 
@@ -659,7 +713,7 @@ GET {ALFRESCO_HOST}/alfresco/api/-default-/public/cmis/versions/1.1/browser/root
 
 ---
 
-# 9. เปิด / ดาวน์โหลดไฟล์เอกสาร
+# 10. เปิด / ดาวน์โหลดไฟล์เอกสาร
 
 ## Endpoint
 
@@ -740,7 +794,7 @@ Content-Disposition: inline; filename="file.pdf"
 
 ---
 
-# 10. ตัวอย่าง Flow ใน Postman
+# 11. ตัวอย่าง Flow ใน Postman
 
 ## Step 1: Login
 
@@ -788,7 +842,7 @@ Authorization: Bearer {{alfresco_access_token}}
 ## Step 4: ค้นหาเอกสาร
 
 ```http
-GET http://localhost:3001/user-api/alfresco/documents?folderPath=/Sites/tg-saving/documentLibrary&exactName=23017_116969&maxItems=17&skipCount=0
+GET http://localhost:3001/user-api/alfresco/documents/search?folderPath=/Sites/tg-saving/documentLibrary&exactName=23017_116969&maxItems=17&skipCount=0
 Authorization: Bearer {{alfresco_access_token}}
 ```
 
@@ -812,7 +866,7 @@ Authorization: Bearer {{alfresco_access_token}}
 
 ---
 
-# 11. สรุป Endpoint ทั้งหมด
+# 12. สรุป Endpoint ทั้งหมด
 
 | Method | Endpoint | ต้องแนบ token | ส่งค่าแบบไหน | ใช้ทำอะไร |
 |---|---|---|---|---|
@@ -822,13 +876,14 @@ Authorization: Bearer {{alfresco_access_token}}
 | `GET` | `/auth/me` | ต้อง | Header Bearer | ดู session ปัจจุบัน |
 | `POST` | `/auth/logout` | ต้อง | Header Bearer | logout token |
 | `GET` | `/user-api/alfresco/folders` | ต้อง | Query string | ดู folder |
-| `GET` | `/user-api/alfresco/documents` | ต้อง | Query string | list/search เอกสาร |
+| `GET` | `/user-api/alfresco/documents` | ต้อง | Query string | list เอกสาร |
+| `GET` | `/user-api/alfresco/documents/search` | ต้อง | Query string | ค้นหาเอกสาร |
 | `GET` | `/user-api/alfresco/documents/location?id=...` | ต้อง | Query string | ดูตำแหน่งไฟล์ |
 | `GET` | `/user-api/alfresco/documents/{id}/content` | ต้อง | Path param + query string | เปิด/ดาวน์โหลดไฟล์ |
 
 ---
 
-# 11.1 สรุป Backend ไปเรียก Alfresco เส้นไหน
+# 12.1 สรุป Backend ไปเรียก Alfresco เส้นไหน
 
 | Endpoint ของโปรเจกต์ | ข้างในไปเรียก Alfresco | ประเภท |
 |---|---|---|
@@ -836,6 +891,7 @@ Authorization: Bearer {{alfresco_access_token}}
 | `POST /auth/login` | `GET /alfresco/api/-default-/public/cmis/versions/1.1/browser/root?cmisselector=object` | CMIS |
 | `GET /user-api/alfresco/folders?path=...` | `GET /alfresco/api/-default-/public/cmis/versions/1.1/browser/root/{path}?cmisselector=children` | CMIS |
 | `GET /user-api/alfresco/documents?folderPath=...` | `GET /alfresco/api/-default-/public/cmis/versions/1.1/browser/root/{folderPath}?cmisselector=object` แล้ว `GET /alfresco/api/-default-/public/cmis/versions/1.1/browser?cmisselector=query&q=...` | CMIS |
+| `GET /user-api/alfresco/documents/search?folderPath=...&q=...` | `GET /alfresco/api/-default-/public/cmis/versions/1.1/browser/root/{folderPath}?cmisselector=object` แล้ว `GET /alfresco/api/-default-/public/cmis/versions/1.1/browser?cmisselector=query&q=...LIKE...` | CMIS |
 | `GET /user-api/alfresco/documents/location?id=...` | ลอง `GET /alfresco/api/-default-/public/alfresco/versions/1/nodes/{nodeId}?include=path` ก่อน ถ้าไม่ได้ใช้ `GET /alfresco/api/-default-/public/cmis/versions/1.1/browser/root?cmisselector=parents&objectId={id}` | REST v1 fallback CMIS |
 | `GET /user-api/alfresco/documents/{id}/content` | `GET /alfresco/api/-default-/public/cmis/versions/1.1/browser/root?cmisselector=content&objectId={id}` | CMIS |
 
@@ -843,7 +899,7 @@ Authorization: Bearer {{alfresco_access_token}}
 
 ---
 
-# 12. Error ที่พบบ่อย
+# 13. Error ที่พบบ่อย
 
 ## ไม่ได้แนบ token
 
@@ -918,7 +974,7 @@ Content-Type: application/json
 
 ---
 
-# 13. หมายเหตุเรื่องความปลอดภัย
+# 14. หมายเหตุเรื่องความปลอดภัย
 
 ไม่ควรส่ง `username/password` ไปกับ API เอกสารทุกครั้ง
 

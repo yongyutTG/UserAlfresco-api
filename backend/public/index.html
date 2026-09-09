@@ -43,13 +43,19 @@ Authorization: Bearer &lt;accessToken&gt;</code></pre>
     </section>
 
     <section>
-      <h2>3. List/Search documents ตามสิทธิ์ user</h2>
-      <pre><code>GET http://localhost:3001/user-api/alfresco/documents?folderPath=/Sites/tg-saving/documentLibrary/การเงิน&amp;q=026277&amp;maxItems=20&amp;skipCount=0
+      <h2>3. List documents ตามสิทธิ์ user</h2>
+      <pre><code>GET http://localhost:3001/user-api/alfresco/documents?folderPath=/Sites/tg-saving/documentLibrary/การเงิน&amp;maxItems=20&amp;skipCount=0
 Authorization: Bearer &lt;accessToken&gt;</code></pre>
     </section>
 
     <section>
-      <h2>4. Open file</h2>
+      <h2>4. Search documents ตามสิทธิ์ user</h2>
+      <pre><code>GET http://localhost:3001/user-api/alfresco/documents/search?folderPath=/Sites/tg-saving/documentLibrary/การเงิน&amp;q=026277&amp;maxItems=20&amp;skipCount=0
+Authorization: Bearer &lt;accessToken&gt;</code></pre>
+    </section>
+
+    <section>
+      <h2>5. Open file</h2>
       <pre><code>GET http://localhost:3001/user-api/alfresco/documents/DOCUMENT_ID/content?name=file.pdf
 Authorization: Bearer &lt;accessToken&gt;</code></pre>
     </section>

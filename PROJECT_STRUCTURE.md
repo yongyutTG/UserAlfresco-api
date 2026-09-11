@@ -151,6 +151,10 @@ PATCH /user-api/alfresco/documents/:id
 
 เส้นนี้ใช้แก้ `cmis:name` ของเอกสาร โดยรับ JSON body เป็น `{ "name": "new-file-name.pdf" }` หรือ `{ "fileName": "new-file-name.pdf" }`
 
+แนะนำให้ frontend ใช้ route แบบ query string `PATCH /user-api/alfresco/documents?id=DOCUMENT_ID` เพื่อส่ง id เต็ม เช่น `uuid;1.0` ได้โดยไม่ติดปัญหา path route
+
+รายการเอกสารจาก list/search map field `allowRename` จาก CMIS allowable action `canUpdateProperties` เพื่อให้ frontend ซ่อนไอคอนแก้ไขชื่อไฟล์เมื่อ user ไม่มีสิทธิ์
+
 ### Open file
 
 ```text

@@ -150,12 +150,16 @@ GET /user-api/alfresco/documents?folderPath=/Sites/tg-saving/documentLibrary/ก
 Authorization: Bearer <accessToken>
 ```
 
+รายการเอกสารจะมี field `allowRename` จาก CMIS `canUpdateProperties` เพื่อให้ frontend แสดง/ซ่อนไอคอนแก้ไขชื่อไฟล์ตามสิทธิ์ของ user
+
 ### Search documents
 
 ```http
 GET /user-api/alfresco/documents/search?folderPath=/Sites/tg-saving/documentLibrary/การเงิน&q=026277&maxItems=20&skipCount=0
 Authorization: Bearer <accessToken>
 ```
+
+ผลค้นหาจะมี field `allowRename` เช่นเดียวกับ list documents
 
 ### Update document name
 
@@ -169,6 +173,8 @@ Content-Type: application/json
   "name": "new-file-name.pdf"
 }
 ```
+
+แนะนำให้ใช้รูปแบบ query string `?id=DOCUMENT_ID` เพื่อรองรับ id เต็มของ Alfresco เช่น `uuid;1.0` และเลี่ยงปัญหา route path กับอักขระพิเศษ
 
 ### Open file
 

@@ -403,6 +403,11 @@ GET /user-api/alfresco/documents
 
 หมายเหตุ: endpoint นี้ใช้สำหรับ list รายการเอกสาร ถ้าต้องการค้นหาชื่อไฟล์ให้ใช้ endpoint แยก `GET /user-api/alfresco/documents/search`
 
+รายการเอกสารจะมี field `allowRename` ซึ่ง map จาก CMIS allowable action `canUpdateProperties`:
+
+- `allowRename: true` = user มีสิทธิ์แก้ไขชื่อไฟล์
+- `allowRename: false` = user ไม่มีสิทธิ์แก้ไขชื่อไฟล์ และ frontend ควรซ่อนไอคอนแก้ไขชื่อ
+
 ## ต้องแนบ token ไหม
 
 ต้องแนบ
@@ -461,6 +466,7 @@ WHERE IN_TREE('folderObjectId')
 GET {ALFRESCO_HOST}/alfresco/api/-default-/public/cmis/versions/1.1/browser
   ?cmisselector=query
   &q=SELECT * FROM cmis:document WHERE IN_TREE('folderObjectId')
+  &includeAllowableActions=true
   &maxItems=17
   &skipCount=0
 Authorization: Basic base64(username:password)
@@ -479,6 +485,8 @@ GET /user-api/alfresco/documents/search
 ## ใช้ทำอะไร
 
 ค้นหาเอกสารใต้ folder ที่ระบุ โดยค้นรวมใน folder ย่อยด้วย `IN_TREE`
+
+ผลลัพธ์แต่ละไฟล์จะมี field `allowRename` เช่นเดียวกับ list documents เพื่อให้ frontend แสดง/ซ่อนไอคอนแก้ไขชื่อไฟล์ตามสิทธิ์
 
 ## ต้องแนบ token ไหม
 
@@ -720,12 +728,22 @@ GET {ALFRESCO_HOST}/alfresco/api/-default-/public/cmis/versions/1.1/browser/root
 ## Endpoint
 
 ```http
+PATCH /user-api/alfresco/documents?id=DOCUMENT_ID
 PATCH /user-api/alfresco/documents/{id}
 ```
 
 ## ใช้ทำอะไร
 
 แก้ไขชื่อไฟล์เอกสารใน Alfresco ตามสิทธิ์ของ user ที่ login อยู่
+
+แนะนำให้ใช้ endpoint แบบ query string `PATCH /user-api/alfresco/documents?id=DOCUMENT_ID` เพื่อรองรับ id เต็มของ Alfresco เช่น `uuid;1.0` และเลี่ยงปัญหา route path กับอักขระพิเศษ
+
+สำหรับ UI ให้ดู field `allowRename` จาก list/search documents:
+
+- ถ้า `allowRename: true` ให้แสดงปุ่มแก้ไขชื่อไฟล์
+- ถ้า `allowRename: false` ให้ซ่อนปุ่มแก้ไขชื่อไฟล์
+
+ถึง frontend จะซ่อนปุ่มแล้ว backend และ Alfresco ยังเป็นจุดตรวจสิทธิ์จริงตอน PATCH เสมอ
 
 ## ต้องแนบ token ไหม
 
@@ -735,11 +753,17 @@ PATCH /user-api/alfresco/documents/{id}
 Authorization: Bearer ACCESS_TOKEN
 ```
 
-## Path Parameters
+## Query Parameters
 
 | ชื่อ | อยู่ที่ | จำเป็น | ตัวอย่าง | ความหมาย |
 |---|---|---|---|---|
-| `id` | Path parameter | ใช่ | `7b815e16-a594-4864-9665-cfda64e8d880%3B1.0` | id ของเอกสาร |
+| `id` | Query string | ใช่ | `7b815e16-a594-4864-9665-cfda64e8d880;1.0` | id ของเอกสาร |
+
+## Path Parameters รุ่นรองรับย้อนหลัง
+
+| ชื่อ | อยู่ที่ | จำเป็น | ตัวอย่าง | ความหมาย |
+|---|---|---|---|---|
+| `id` | Path parameter | ไม่แนะนำ | `7b815e16-a594-4864-9665-cfda64e8d880%3B1.0` | id ของเอกสาร ใช้รองรับ client เก่า |
 
 ## Body Parameters
 
@@ -755,7 +779,7 @@ Authorization: Bearer ACCESS_TOKEN
 ## ตัวอย่าง Request
 
 ```http
-PATCH http://localhost:3001/user-api/alfresco/documents/7b815e16-a594-4864-9665-cfda64e8d880%3B1.0
+PATCH http://localhost:3001/user-api/alfresco/documents?id=7b815e16-a594-4864-9665-cfda64e8d880%3B1.0
 Authorization: Bearer ACCESS_TOKEN
 Content-Type: application/json
 ```
@@ -956,7 +980,7 @@ Authorization: Bearer {{alfresco_access_token}}
 นำ `id` จาก response ไปใช้:
 
 ```http
-PATCH http://localhost:3001/user-api/alfresco/documents/{id}
+PATCH http://localhost:3001/user-api/alfresco/documents?id={id}
 Authorization: Bearer {{alfresco_access_token}}
 Content-Type: application/json
 ```
@@ -982,7 +1006,7 @@ Content-Type: application/json
 | `GET` | `/user-api/alfresco/documents` | ต้อง | Query string | list เอกสาร |
 | `GET` | `/user-api/alfresco/documents/search` | ต้อง | Query string | ค้นหาเอกสาร |
 | `GET` | `/user-api/alfresco/documents/location?id=...` | ต้อง | Query string | ดูตำแหน่งไฟล์ |
-| `PATCH` | `/user-api/alfresco/documents/{id}` | ต้อง | Path param + JSON body | แก้ไขชื่อไฟล์ |
+| `PATCH` | `/user-api/alfresco/documents?id=...` | ต้อง | Query string + JSON body | แก้ไขชื่อไฟล์ |
 | `GET` | `/user-api/alfresco/documents/{id}/content` | ต้อง | Path param + query string | เปิด/ดาวน์โหลดไฟล์ |
 
 ---
@@ -994,10 +1018,10 @@ Content-Type: application/json
 | `GET /health` | `GET /alfresco/service/api/server` | Web Script |
 | `POST /auth/login` | `GET /alfresco/api/-default-/public/cmis/versions/1.1/browser/root?cmisselector=object` | CMIS |
 | `GET /user-api/alfresco/folders?path=...` | `GET /alfresco/api/-default-/public/cmis/versions/1.1/browser/root/{path}?cmisselector=children` | CMIS |
-| `GET /user-api/alfresco/documents?folderPath=...` | `GET /alfresco/api/-default-/public/cmis/versions/1.1/browser/root/{folderPath}?cmisselector=object` แล้ว `GET /alfresco/api/-default-/public/cmis/versions/1.1/browser?cmisselector=query&q=...` | CMIS |
-| `GET /user-api/alfresco/documents/search?folderPath=...&q=...` | `GET /alfresco/api/-default-/public/cmis/versions/1.1/browser/root/{folderPath}?cmisselector=object` แล้ว `GET /alfresco/api/-default-/public/cmis/versions/1.1/browser?cmisselector=query&q=...LIKE...` | CMIS |
+| `GET /user-api/alfresco/documents?folderPath=...` | `GET /alfresco/api/-default-/public/cmis/versions/1.1/browser/root/{folderPath}?cmisselector=object` แล้ว `GET /alfresco/api/-default-/public/cmis/versions/1.1/browser?cmisselector=query&q=...&includeAllowableActions=true` | CMIS |
+| `GET /user-api/alfresco/documents/search?folderPath=...&q=...` | `GET /alfresco/api/-default-/public/cmis/versions/1.1/browser/root/{folderPath}?cmisselector=object` แล้ว `GET /alfresco/api/-default-/public/cmis/versions/1.1/browser?cmisselector=query&q=...LIKE...&includeAllowableActions=true` | CMIS |
 | `GET /user-api/alfresco/documents/location?id=...` | ลอง `GET /alfresco/api/-default-/public/alfresco/versions/1/nodes/{nodeId}?include=path` ก่อน ถ้าไม่ได้ใช้ `GET /alfresco/api/-default-/public/cmis/versions/1.1/browser/root?cmisselector=parents&objectId={id}` | REST v1 fallback CMIS |
-| `PATCH /user-api/alfresco/documents/{id}` | `POST /alfresco/api/-default-/public/cmis/versions/1.1/browser/root` พร้อม `cmisaction=update` และ `propertyId[0]=cmis:name` | CMIS |
+| `PATCH /user-api/alfresco/documents?id=...` | `POST /alfresco/api/-default-/public/cmis/versions/1.1/browser/root` พร้อม `cmisaction=update` และ `propertyId[0]=cmis:name` | CMIS |
 | `GET /user-api/alfresco/documents/{id}/content` | `GET /alfresco/api/-default-/public/cmis/versions/1.1/browser/root?cmisselector=content&objectId={id}` | CMIS |
 
 หมายเหตุ: `{path}` และ `{folderPath}` จะถูก encode ทีละ segment ในโค้ด `backend/src/utils/cmis.js`

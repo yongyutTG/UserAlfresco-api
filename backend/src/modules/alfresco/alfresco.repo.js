@@ -17,7 +17,7 @@ async function getServerInfo() {
 async function getChildrenByPath(folderPath, headers) {
   const result = await alfrescoHttp.get(cmisUrlForPath(folderPath), {
     headers,
-    params: { cmisselector: "children" },
+    params: { cmisselector: "children", includeAllowableActions: true },
   });
 
   return (result.data.objects || []).map((item) => mapCmisObject(item));
@@ -26,7 +26,7 @@ async function getChildrenByPath(folderPath, headers) {
 async function getObjectByPath(objectPath, headers) {
   const result = await alfrescoHttp.get(cmisUrlForPath(objectPath), {
     headers,
-    params: { cmisselector: "object" },
+    params: { cmisselector: "object", includeAllowableActions: true },
   });
 
   return mapCmisObject(result.data);
@@ -35,7 +35,7 @@ async function getObjectByPath(objectPath, headers) {
 async function getObjectById(objectId, headers) {
   const result = await alfrescoHttp.get(`${config.alfrescoCmis}/root`, {
     headers,
-    params: { cmisselector: "object", objectId },
+    params: { cmisselector: "object", objectId, includeAllowableActions: true },
   });
 
   return mapCmisObject(result.data);
@@ -48,6 +48,7 @@ async function queryDocuments(query, headers, options = {}) {
       cmisselector: "query",
       q: query,
       searchAllVersions: options.searchAllVersions,
+      includeAllowableActions: true,
       maxItems: options.maxItems,
       skipCount: options.skipCount,
     },

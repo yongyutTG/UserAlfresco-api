@@ -1,4 +1,8 @@
 # UserAlfresco API
+how run 
+pm2 start ecosystem.config.js
+
+
 
 เอกสาร flow แบบ Step 1, 2, 3: [FLOW_STEPS.md](FLOW_STEPS.md)
 โครงสร้างโปรเจคแบบ backend modules: [PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md)

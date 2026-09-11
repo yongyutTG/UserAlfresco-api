@@ -35,6 +35,26 @@ function getExactFileNameCandidates(fileName) {
   return [...new Set(candidates)];
 }
 
+function createBadRequest(message) {
+  const error = new Error(message);
+  error.statusCode = 400;
+  return error;
+}
+
+function normalizeDocumentName(name) {
+  const normalizedName = String(name || "").trim();
+
+  if (!normalizedName) {
+    throw createBadRequest("Missing document name");
+  }
+
+  if (/[\\/]/.test(normalizedName)) {
+    throw createBadRequest("Document name must not contain path separators");
+  }
+
+  return normalizedName;
+}
+
 //ฟังชันตรวจสอบสถานะการเชื่อมต่อกับ Alfresco
 async function getHealth() {
   const alfresco = await alfrescoRepo.getServerInfo();
@@ -209,6 +229,21 @@ async function getDocumentLocation(id, headers) {
     source: null,
   };
 }
+//ฟังชันแก้ไขเอกสาร ปัจจุบันใช้สำหรับ rename เอกสารผ่าน CMIS updateProperties
+async function updateDocument(id, payload = {}, headers) {
+  if (!id || id === "DOCUMENT_ID") {
+    throw createBadRequest("Missing real document id");
+  }
+
+  const name = normalizeDocumentName(payload.name || payload.fileName);
+  const updatedObject = await alfrescoRepo.updateDocumentProperties(id, { name }, headers);
+
+  return {
+    id,
+    updated: true,
+    document: updatedObject,
+  };
+}
 //ฟังชันสตรีมเนื้อหาเอกสารจาก Alfresco
 async function streamDocumentContent(res, id, name, headers) {
   if (!id || id === "DOCUMENT_ID") {
@@ -233,4 +268,5 @@ module.exports = {
   searchDocuments,
   searchDocumentsInTree,
   streamDocumentContent,
+  updateDocument,
 };

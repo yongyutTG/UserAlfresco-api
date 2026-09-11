@@ -136,6 +136,21 @@ GET /user-api/alfresco/documents/location?id=DOCUMENT_ID
 
 ยังมี route เก่า `GET /user-api/alfresco/documents/:id/location` สำหรับรองรับโค้ดเดิม
 
+### Rename file
+
+```text
+PATCH /user-api/alfresco/documents?id=DOCUMENT_ID
+PATCH /user-api/alfresco/documents/:id
+  -> apiRateLimiter
+  -> requireUserSession
+  -> alfresco.controller.updateDocument()
+  -> alfresco.service.updateDocument()
+  -> alfresco.repo.updateDocumentProperties()
+  -> Alfresco CMIS Browser Binding cmisaction=update
+```
+
+เส้นนี้ใช้แก้ `cmis:name` ของเอกสาร โดยรับ JSON body เป็น `{ "name": "new-file-name.pdf" }` หรือ `{ "fileName": "new-file-name.pdf" }`
+
 ### Open file
 
 ```text
@@ -267,6 +282,7 @@ GET /user-api/alfresco/documents/location?id=DOCUMENT_ID
 ```text
 ดึง folder/file/document    -> ใช้ CMIS API
 ค้นหาเอกสารใน Alfresco     -> ใช้ CMIS Query
+แก้ไขชื่อไฟล์เอกสาร        -> ใช้ CMIS update
 เปิดไฟล์ PDF               -> ใช้ CMIS Content
 ดู user/site/server         -> ใช้ Web Script API
 REST v1 /nodes/...          -> ใช้เฉพาะ location แบบมี CMIS fallback

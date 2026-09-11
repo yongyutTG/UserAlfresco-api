@@ -153,6 +153,19 @@ GET /user-api/alfresco/documents/search?folderPath=/Sites/tg-saving/documentLibr
 Authorization: Bearer <accessToken>
 ```
 
+### Update document name
+
+```http
+PATCH /user-api/alfresco/documents?id=DOCUMENT_ID
+PATCH /user-api/alfresco/documents/:id
+Authorization: Bearer <accessToken>
+Content-Type: application/json
+
+{
+  "name": "new-file-name.pdf"
+}
+```
+
 ### Open file
 
 ```http

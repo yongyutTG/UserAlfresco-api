@@ -31,6 +31,15 @@ async function getObjectByPath(objectPath, headers) {
 
   return mapCmisObject(result.data);
 }
+//ฟังชันดึงข้อมูล object จาก Alfresco ตาม CMIS objectId
+async function getObjectById(objectId, headers) {
+  const result = await alfrescoHttp.get(`${config.alfrescoCmis}/root`, {
+    headers,
+    params: { cmisselector: "object", objectId },
+  });
+
+  return mapCmisObject(result.data);
+}
 //ฟังชันค้นหาเอกสารใน Alfresco ตาม query
 async function queryDocuments(query, headers, options = {}) {
   const result = await alfrescoHttp.get(config.alfrescoCmis, {
@@ -45,6 +54,26 @@ async function queryDocuments(query, headers, options = {}) {
   });
 
   return result.data;
+}
+//ฟังชันแก้ไข properties ของเอกสารผ่าน CMIS Browser Binding
+async function updateDocumentProperties(objectId, properties, headers) {
+  const form = new URLSearchParams();
+  form.set("cmisaction", "update");
+  form.set("objectId", objectId);
+
+  if (properties.name) {
+    form.set("propertyId[0]", "cmis:name");
+    form.set("propertyValue[0]", properties.name);
+  }
+
+  await alfrescoHttp.post(`${config.alfrescoCmis}/root`, form, {
+    headers: {
+      ...headers,
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
+  });
+
+  return getObjectById(objectId, headers);
 }
 //ฟังชันดึง parent folder ของเอกสารจาก Alfresco ตาม objectId
 async function getObjectParents(objectId, headers) {
@@ -108,8 +137,10 @@ module.exports = {
   getDocumentContentStream,
   getNodePathByObjectId,
   getObjectParents,
+  getObjectById,
   getObjectByPath,
   getServerInfo,
   queryDocuments,
   safeFileName,
+  updateDocumentProperties,
 };

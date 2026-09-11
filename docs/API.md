@@ -626,7 +626,9 @@ Authorization: Basic base64(username:password)
       "mimeType": "application/pdf",
       "size": 123456,
       "createdBy": "Administrator",
-      "lastModifiedBy": "Administrator"
+      "creationDate": "2019-02-05T10:25:00.000+07:00",
+      "lastModifiedBy": "Administrator",
+      "lastModificationDate": "2019-02-05T10:25:00.000+07:00"
     }
   ]
 }
@@ -713,7 +715,92 @@ GET {ALFRESCO_HOST}/alfresco/api/-default-/public/cmis/versions/1.1/browser/root
 
 ---
 
-# 10. เปิด / ดาวน์โหลดไฟล์เอกสาร
+# 10. แก้ไขชื่อไฟล์เอกสาร
+
+## Endpoint
+
+```http
+PATCH /user-api/alfresco/documents/{id}
+```
+
+## ใช้ทำอะไร
+
+แก้ไขชื่อไฟล์เอกสารใน Alfresco ตามสิทธิ์ของ user ที่ login อยู่
+
+## ต้องแนบ token ไหม
+
+ต้องแนบ
+
+```http
+Authorization: Bearer ACCESS_TOKEN
+```
+
+## Path Parameters
+
+| ชื่อ | อยู่ที่ | จำเป็น | ตัวอย่าง | ความหมาย |
+|---|---|---|---|---|
+| `id` | Path parameter | ใช่ | `7b815e16-a594-4864-9665-cfda64e8d880%3B1.0` | id ของเอกสาร |
+
+## Body Parameters
+
+ส่งแบบ `Body -> raw -> JSON`
+
+| ชื่อ | อยู่ที่ | จำเป็น | ตัวอย่าง | ความหมาย |
+|---|---|---|---|---|
+| `name` | JSON body | ใช่ | `new-file-name.pdf` | ชื่อไฟล์ใหม่ |
+| `fileName` | JSON body | ไม่จำเป็น | `new-file-name.pdf` | alias ของ `name` |
+
+หมายเหตุ: ชื่อไฟล์ใหม่ต้องไม่ว่าง และต้องไม่มี `/` หรือ `\`
+
+## ตัวอย่าง Request
+
+```http
+PATCH http://localhost:3001/user-api/alfresco/documents/7b815e16-a594-4864-9665-cfda64e8d880%3B1.0
+Authorization: Bearer ACCESS_TOKEN
+Content-Type: application/json
+```
+
+```json
+{
+  "name": "new-file-name.pdf"
+}
+```
+
+## ตัวอย่าง Response
+
+```json
+{
+  "id": "7b815e16-a594-4864-9665-cfda64e8d880;1.0",
+  "updated": true,
+  "document": {
+    "id": "7b815e16-a594-4864-9665-cfda64e8d880;1.0",
+    "name": "new-file-name.pdf",
+    "type": "cmis:document"
+  },
+  "username": "Administrator"
+}
+```
+
+## ข้างใน backend ไปเรียก CMIS อะไร
+
+backend จะใช้ CMIS Browser Binding action `update`:
+
+```http
+POST {ALFRESCO_HOST}/alfresco/api/-default-/public/cmis/versions/1.1/browser/root
+Authorization: Basic base64(username:password)
+Content-Type: application/x-www-form-urlencoded
+
+cmisaction=update
+objectId={id}
+propertyId[0]=cmis:name
+propertyValue[0]=new-file-name.pdf
+```
+
+ถ้า user ไม่มีสิทธิ์แก้ไขใน Alfresco จะได้ error จาก Alfresco กลับมา เช่น `403`
+
+---
+
+# 11. เปิด / ดาวน์โหลดไฟล์เอกสาร
 
 ## Endpoint
 
@@ -794,7 +881,7 @@ Content-Disposition: inline; filename="file.pdf"
 
 ---
 
-# 11. ตัวอย่าง Flow ใน Postman
+# 12. ตัวอย่าง Flow ใน Postman
 
 ## Step 1: Login
 
@@ -864,9 +951,25 @@ GET http://localhost:3001/user-api/alfresco/documents/{id}/content?name=file.pdf
 Authorization: Bearer {{alfresco_access_token}}
 ```
 
+## Step 7: แก้ไขชื่อไฟล์
+
+นำ `id` จาก response ไปใช้:
+
+```http
+PATCH http://localhost:3001/user-api/alfresco/documents/{id}
+Authorization: Bearer {{alfresco_access_token}}
+Content-Type: application/json
+```
+
+```json
+{
+  "name": "new-file-name.pdf"
+}
+```
+
 ---
 
-# 12. สรุป Endpoint ทั้งหมด
+# 13. สรุป Endpoint ทั้งหมด
 
 | Method | Endpoint | ต้องแนบ token | ส่งค่าแบบไหน | ใช้ทำอะไร |
 |---|---|---|---|---|
@@ -879,11 +982,12 @@ Authorization: Bearer {{alfresco_access_token}}
 | `GET` | `/user-api/alfresco/documents` | ต้อง | Query string | list เอกสาร |
 | `GET` | `/user-api/alfresco/documents/search` | ต้อง | Query string | ค้นหาเอกสาร |
 | `GET` | `/user-api/alfresco/documents/location?id=...` | ต้อง | Query string | ดูตำแหน่งไฟล์ |
+| `PATCH` | `/user-api/alfresco/documents/{id}` | ต้อง | Path param + JSON body | แก้ไขชื่อไฟล์ |
 | `GET` | `/user-api/alfresco/documents/{id}/content` | ต้อง | Path param + query string | เปิด/ดาวน์โหลดไฟล์ |
 
 ---
 
-# 12.1 สรุป Backend ไปเรียก Alfresco เส้นไหน
+# 13.1 สรุป Backend ไปเรียก Alfresco เส้นไหน
 
 | Endpoint ของโปรเจกต์ | ข้างในไปเรียก Alfresco | ประเภท |
 |---|---|---|
@@ -893,13 +997,14 @@ Authorization: Bearer {{alfresco_access_token}}
 | `GET /user-api/alfresco/documents?folderPath=...` | `GET /alfresco/api/-default-/public/cmis/versions/1.1/browser/root/{folderPath}?cmisselector=object` แล้ว `GET /alfresco/api/-default-/public/cmis/versions/1.1/browser?cmisselector=query&q=...` | CMIS |
 | `GET /user-api/alfresco/documents/search?folderPath=...&q=...` | `GET /alfresco/api/-default-/public/cmis/versions/1.1/browser/root/{folderPath}?cmisselector=object` แล้ว `GET /alfresco/api/-default-/public/cmis/versions/1.1/browser?cmisselector=query&q=...LIKE...` | CMIS |
 | `GET /user-api/alfresco/documents/location?id=...` | ลอง `GET /alfresco/api/-default-/public/alfresco/versions/1/nodes/{nodeId}?include=path` ก่อน ถ้าไม่ได้ใช้ `GET /alfresco/api/-default-/public/cmis/versions/1.1/browser/root?cmisselector=parents&objectId={id}` | REST v1 fallback CMIS |
+| `PATCH /user-api/alfresco/documents/{id}` | `POST /alfresco/api/-default-/public/cmis/versions/1.1/browser/root` พร้อม `cmisaction=update` และ `propertyId[0]=cmis:name` | CMIS |
 | `GET /user-api/alfresco/documents/{id}/content` | `GET /alfresco/api/-default-/public/cmis/versions/1.1/browser/root?cmisselector=content&objectId={id}` | CMIS |
 
 หมายเหตุ: `{path}` และ `{folderPath}` จะถูก encode ทีละ segment ในโค้ด `backend/src/utils/cmis.js`
 
 ---
 
-# 13. Error ที่พบบ่อย
+# 14. Error ที่พบบ่อย
 
 ## ไม่ได้แนบ token
 
@@ -974,7 +1079,7 @@ Content-Type: application/json
 
 ---
 
-# 14. หมายเหตุเรื่องความปลอดภัย
+# 15. หมายเหตุเรื่องความปลอดภัย
 
 ไม่ควรส่ง `username/password` ไปกับ API เอกสารทุกครั้ง
 

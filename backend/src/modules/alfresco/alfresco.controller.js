@@ -71,6 +71,18 @@ async function getDocumentLocation(req, res) {
     handleError(res, "ไม่สามารถดึงตำแหน่งไฟล์จาก Alfresco ได้", err);
   }
 }
+//ฟังชันแก้ไขข้อมูลเอกสาร ปัจจุบันรองรับการเปลี่ยนชื่อไฟล์ด้วย field name
+async function updateDocument(req, res) {
+  try {
+    const result = await alfrescoService.updateDocument(req.params.id || req.query.id, req.body, req.alfrescoAuthHeaders);
+    res.json({
+      ...result,
+      username: req.alfrescoUsername,
+    });
+  } catch (err) {
+    handleError(res, "ไม่สามารถแก้ไขเอกสารใน Alfresco ได้", err);
+  }
+}
 //ฟังชันสตรีมเนื้อหาเอกสารจาก Alfresco
 async function streamDocumentContent(req, res) {
   try {
@@ -87,4 +99,5 @@ module.exports = {
   listFolders,
   searchDocuments,
   streamDocumentContent,
+  updateDocument,
 };

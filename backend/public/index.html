@@ -59,6 +59,17 @@ Authorization: Bearer &lt;accessToken&gt;</code></pre>
       <pre><code>GET http://localhost:3001/user-api/alfresco/documents/DOCUMENT_ID/content?name=file.pdf
 Authorization: Bearer &lt;accessToken&gt;</code></pre>
     </section>
+
+    <section>
+      <h2>6. Rename file</h2>
+      <pre><code>PATCH http://localhost:3001/user-api/alfresco/documents/DOCUMENT_ID
+Authorization: Bearer &lt;accessToken&gt;
+Content-Type: application/json
+
+{
+  "name": "new-file-name.pdf"
+}</code></pre>
+    </section>
   </main>
 </body>
 </html>

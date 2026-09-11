@@ -7,6 +7,8 @@ router.get("/folders", alfrescoController.listFolders);
 router.get("/documents", alfrescoController.listDocuments);
 router.get("/documents/search", alfrescoController.searchDocuments);
 router.get("/documents/location", alfrescoController.getDocumentLocation);
+router.patch("/documents", alfrescoController.updateDocument);
+router.patch("/documents/:id", alfrescoController.updateDocument);
 router.get("/documents/:id/location", alfrescoController.getDocumentLocation);
 router.get("/documents/:id/content", alfrescoController.streamDocumentContent);
 

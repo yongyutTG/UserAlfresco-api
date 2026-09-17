@@ -20,6 +20,20 @@ async function listFolders(req, res) {
     handleError(res, "ไม่สามารถรายการโฟลเดอร์จาก Alfresco ได้", err);
   }
 }
+//ฟังชันดึงโฟลเดอร์ย่อยทุกชั้นจาก path หลัก
+async function listFolderTree(req, res) {
+  try {
+    const folderPath = req.query.path || "/";
+    const options = { maxDepth: req.query.maxDepth };
+    const result = await alfrescoService.listFolderTree(folderPath, req.alfrescoAuthHeaders, options);
+    res.json({
+      ...result,
+      username: req.alfrescoUsername,
+    });
+  } catch (err) {
+    handleError(res, "ไม่สามารถดึงโฟลเดอร์ย่อยจาก Alfresco ได้", err);
+  }
+}
 //ฟังชันดึงรายการเอกสารจาก Alfresco
 async function listDocuments(req, res) {
   try {
@@ -96,6 +110,7 @@ module.exports = {
   health,
   getDocumentLocation,
   listDocuments,
+  listFolderTree,
   listFolders,
   searchDocuments,
   streamDocumentContent,

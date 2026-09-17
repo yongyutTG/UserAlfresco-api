@@ -22,6 +22,60 @@ function normalizeRepositoryPath(repositoryPath) {
   return String(repositoryPath).replace(/^\/Company Home(?=\/|$)/, "") || "/";
 }
 
+function joinRepositoryPath(parentPath, childName) {
+  const parent = String(parentPath || "/").replace(/\/+$/, "");
+  const child = String(childName || "").trim();
+
+  if (!child) return parent || "/";
+  if (!parent || parent === "/") return `/${child}`;
+  return `${parent}/${child}`;
+}
+
+function normalizePathForCompare(repositoryPath) {
+  const value = String(repositoryPath || "/").trim().replace(/\/+$/, "");
+  return value || "/";
+}
+
+function getPathDepthFromRoot(repositoryPath, rootPath) {
+  const normalizedPath = normalizePathForCompare(repositoryPath);
+  const normalizedRoot = normalizePathForCompare(rootPath);
+
+  if (normalizedPath === normalizedRoot) return 0;
+  if (!normalizedPath.startsWith(`${normalizedRoot}/`)) return null;
+
+  return normalizedPath
+    .slice(normalizedRoot.length + 1)
+    .split("/")
+    .filter(Boolean)
+    .length;
+}
+
+function buildFolderTreeFromFlatFolders(folders, rootPath) {
+  const normalizedRoot = normalizePathForCompare(rootPath);
+  const nodesByPath = new Map();
+  const tree = [];
+
+  for (const folder of folders) {
+    nodesByPath.set(normalizePathForCompare(folder.path), {
+      ...folder,
+      children: [],
+    });
+  }
+
+  for (const node of nodesByPath.values()) {
+    const normalizedPath = normalizePathForCompare(node.path);
+    const parentPath = normalizePathForCompare(normalizedPath.slice(0, normalizedPath.lastIndexOf("/")) || "/");
+
+    if (parentPath === normalizedRoot || !nodesByPath.has(parentPath)) {
+      tree.push(node);
+    } else {
+      nodesByPath.get(parentPath).children.push(node);
+    }
+  }
+
+  return tree;
+}
+
 function getExactFileNameCandidates(fileName) {
   const normalizedFileName = String(fileName || "").trim();
   if (!normalizedFileName) return [];
@@ -64,6 +118,43 @@ async function getHealth() {
 async function listFolders(folderPath, headers) {
   const items = await alfrescoRepo.getChildrenByPath(folderPath || "/", headers);
   return items.filter((item) => item.isFolder);
+}
+//ฟังชันดึงโฟลเดอร์ย่อยทุกชั้นจาก path หลักด้วย CMIS query ครั้งเดียว เพื่อลดปัญหา timeout จากการวนเรียก children หลายรอบ
+async function listFolderTree(folderPath, headers, options = {}) {
+  const rootPath = folderPath || "/";
+  const maxDepth = parsePositiveInteger(options.maxDepth, 10, 30);
+  const rootFolder = await alfrescoRepo.getObjectByPath(rootPath, headers);
+  const query = `SELECT * FROM cmis:folder WHERE IN_TREE('${escapeCmisString(rootFolder.id)}')`;
+  const data = await alfrescoRepo.queryDocuments(query, headers, {
+    searchAllVersions: false,
+    maxItems: config.maxListItems,
+    skipCount: 0,
+  });
+
+  const folders = (data.results || [])
+    .map((item) => mapCmisObject(item))
+    .filter((folder) => folder.isFolder && folder.path)
+    .map((folder) => ({
+      ...folder,
+      depth: getPathDepthFromRoot(folder.path, rootPath),
+    }))
+    .filter((folder) => folder.depth && folder.depth <= maxDepth)
+    .sort((a, b) => normalizePathForCompare(a.path).localeCompare(normalizePathForCompare(b.path), "th"));
+
+  const tree = buildFolderTreeFromFlatFolders(folders, rootPath);
+
+  return {
+    path: rootPath,
+    folderId: rootFolder.id,
+    maxDepth,
+    count: folders.length,
+    total: data.numItems ?? null,
+    hasMoreItems: Boolean(data.hasMoreItems),
+    skippedCount: 0,
+    errors: [],
+    folders,
+    tree,
+  };
 }
 //ฟังชันดึงรายการเอกสารจาก Alfresco ตาม path และ query
 async function queryDocumentsInTree(folderPath, headers, options = {}) {
@@ -262,6 +353,7 @@ module.exports = {
   getHealth,
   findDocumentByExactNameInTree,
   getDocumentLocation,
+  listFolderTree,
   listFolders,
   listOrSearchDocuments,
   queryDocumentsInTree,

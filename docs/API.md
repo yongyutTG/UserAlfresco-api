@@ -389,6 +389,106 @@ cmis:baseTypeId = cmis:folder
 
 ---
 
+# 6.1 ดูรายการ Folder ย่อยทุกชั้น
+
+## Endpoint
+
+```http
+GET /user-api/alfresco/folders/tree
+```
+
+## ใช้ทำอะไร
+
+ดู folder ย่อยทุกชั้นภายใต้ path ที่ระบุ โดยใช้สิทธิ์ของ user จาก token ที่แนบมา
+
+## ต้องแนบ token ไหม
+
+ต้องแนบ
+
+```http
+Authorization: Bearer ACCESS_TOKEN
+```
+
+## Query Parameters
+
+| ชื่อ | อยู่ที่ | จำเป็น | Default | ตัวอย่าง | ความหมาย |
+|---|---|---|---|---|---|
+| `path` | Query string | ไม่จำเป็น | `/` | `/Sites/tg-saving/documentLibrary` | path ของ folder หลัก |
+| `maxDepth` | Query string | ไม่จำเป็น | `10` | `5` | จำนวนชั้นสูงสุดที่จะไล่ลงไป สูงสุด `30` |
+
+## ตัวอย่าง Request
+
+```http
+GET http://localhost:3001/user-api/alfresco/folders/tree?path=/Sites/tg-saving/documentLibrary&maxDepth=10
+Authorization: Bearer ACCESS_TOKEN
+```
+
+## ข้างใน backend ไปเรียก CMIS อะไร
+
+backend จะเริ่มจากการดึง object ของ folder หลักก่อน:
+
+```http
+GET {ALFRESCO_HOST}/alfresco/api/-default-/public/cmis/versions/1.1/browser/root/Sites/tg-saving/documentLibrary?cmisselector=object
+Authorization: Basic base64(username:password)
+```
+
+จากนั้นใช้ `folderId` ไป query folder ย่อยทั้งหมดใต้ tree ครั้งเดียว:
+
+```http
+GET {ALFRESCO_HOST}/alfresco/api/-default-/public/cmis/versions/1.1/browser?cmisselector=query&q=SELECT * FROM cmis:folder WHERE IN_TREE('folderObjectId')
+Authorization: Basic base64(username:password)
+```
+
+backend จะนำผลลัพธ์มาคำนวณ `depth` จาก path แล้วกรองไม่ให้เกิน `maxDepth` จากนั้นประกอบเป็น `tree`
+
+## ตัวอย่าง Response
+
+```json
+{
+  "path": "/Sites/tg-saving/documentLibrary",
+  "maxDepth": 10,
+  "count": 2,
+  "username": "Administrator",
+  "folders": [
+    {
+      "id": "folder-id",
+      "name": "การเงิน",
+      "path": "/Sites/tg-saving/documentLibrary/การเงิน",
+      "type": "cmis:folder",
+      "depth": 1
+    },
+    {
+      "id": "child-folder-id",
+      "name": "2567",
+      "path": "/Sites/tg-saving/documentLibrary/การเงิน/2567",
+      "type": "cmis:folder",
+      "depth": 2
+    }
+  ],
+  "tree": [
+    {
+      "id": "folder-id",
+      "name": "การเงิน",
+      "path": "/Sites/tg-saving/documentLibrary/การเงิน",
+      "type": "cmis:folder",
+      "depth": 1,
+      "children": [
+        {
+          "id": "child-folder-id",
+          "name": "2567",
+          "path": "/Sites/tg-saving/documentLibrary/การเงิน/2567",
+          "type": "cmis:folder",
+          "depth": 2,
+          "children": []
+        }
+      ]
+    }
+  ]
+}
+```
+
+---
+
 # 7. List เอกสาร
 
 ## Endpoint
@@ -1018,6 +1118,7 @@ Content-Type: application/json
 | `GET /health` | `GET /alfresco/service/api/server` | Web Script |
 | `POST /auth/login` | `GET /alfresco/api/-default-/public/cmis/versions/1.1/browser/root?cmisselector=object` | CMIS |
 | `GET /user-api/alfresco/folders?path=...` | `GET /alfresco/api/-default-/public/cmis/versions/1.1/browser/root/{path}?cmisselector=children` | CMIS |
+| `GET /user-api/alfresco/folders/tree?path=...` | `GET /alfresco/api/-default-/public/cmis/versions/1.1/browser/root/{path}?cmisselector=object` แล้ว `GET /alfresco/api/-default-/public/cmis/versions/1.1/browser?cmisselector=query&q=SELECT * FROM cmis:folder WHERE IN_TREE(...)` | CMIS |
 | `GET /user-api/alfresco/documents?folderPath=...` | `GET /alfresco/api/-default-/public/cmis/versions/1.1/browser/root/{folderPath}?cmisselector=object` แล้ว `GET /alfresco/api/-default-/public/cmis/versions/1.1/browser?cmisselector=query&q=...&includeAllowableActions=true` | CMIS |
 | `GET /user-api/alfresco/documents/search?folderPath=...&q=...` | `GET /alfresco/api/-default-/public/cmis/versions/1.1/browser/root/{folderPath}?cmisselector=object` แล้ว `GET /alfresco/api/-default-/public/cmis/versions/1.1/browser?cmisselector=query&q=...LIKE...&includeAllowableActions=true` | CMIS |
 | `GET /user-api/alfresco/documents/location?id=...` | ลอง `GET /alfresco/api/-default-/public/alfresco/versions/1/nodes/{nodeId}?include=path` ก่อน ถ้าไม่ได้ใช้ `GET /alfresco/api/-default-/public/cmis/versions/1.1/browser/root?cmisselector=parents&objectId={id}` | REST v1 fallback CMIS |

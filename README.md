@@ -143,6 +143,15 @@ GET /user-api/alfresco/folders?path=/Sites/tg-saving/documentLibrary
 Authorization: Bearer <accessToken>
 ```
 
+### List folder tree
+
+```http
+GET /user-api/alfresco/folders/tree?path=/Sites/tg-saving/documentLibrary&maxDepth=10
+Authorization: Bearer <accessToken>
+```
+
+ใช้ดึงโฟลเดอร์ย่อยทุกชั้นใต้ path หลักตามสิทธิ์ของ user ที่ login อยู่ โดย response จะมีทั้ง `folders` แบบรายการเรียงรวม และ `tree` แบบโครงสร้าง parent/children
+
 ### List documents
 
 ```http

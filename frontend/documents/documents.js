@@ -257,12 +257,23 @@ const documentLibraryPath = "/Sites/tg-saving/documentLibrary";
       state.maxItems = Number(els.pageSize.value);
     }
 
-    function openDocument(url) {
+    async function openDocument(url) {
       if (!url) return;
 
-      // เปิดแบบ direct URL เหมือนเวอร์ชันแรก ให้ browser เป็นคน stream/render PDF เอง
-      // หลัง login backend ตั้ง HttpOnly cookie แล้ว route content จึงรู้ session user ได้โดยไม่ต้อง fetch blob ผ่าน JS
-      window.open(url, "_blank", "noopener");
+      try {
+        const res = await fetch(url, { headers: authHeaders() });
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          throw new Error(data.message || `HTTP ${res.status}`);
+        }
+
+        const blob = await res.blob();
+        const blobUrl = URL.createObjectURL(blob);
+        window.open(blobUrl, "_blank", "noopener");
+        window.setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
+      } catch (err) {
+        els.summary.innerHTML = `<span class="error">${escapeHtml(err.message || "เปิดไฟล์ไม่สำเร็จ")}</span>`;
+      }
     }
 
     els.logoutBtn.addEventListener("click", async () => {

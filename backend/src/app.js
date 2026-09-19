@@ -34,7 +34,7 @@ app.get("/health", alfrescoController.health);
 app.use("/auth", authRoutes);
 
 // ทุก endpoint ใต้ /user-api/alfresco/* ต้องผ่าน session middleware ก่อน
-// middleware ตรวจได้ทั้ง Authorization: Bearer <token> และ cookie alfresco_user_session
+// middleware ตรวจ Authorization: Bearer <token>
 app.use("/user-api/alfresco", apiRateLimiter, requireUserSession, alfrescoRoutes);
 
 app.use(notFound);

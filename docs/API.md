@@ -48,7 +48,7 @@ CORS_ALLOWED_ORIGINS=http://localhost:5173,http://localhost:3000
 CORS_ALLOWED_ORIGINS=*
 ```
 
-หมายเหตุ: โปรเจกต์นี้ใช้ cookie session ด้วย ดังนั้นเมื่อใช้ `*` backend จะตอบ `Access-Control-Allow-Origin` เป็น origin ที่ request ส่งมา แทนการตอบ `*` ตรง ๆ เพื่อให้ใช้ร่วมกับ credential ได้ถูกต้อง
+หมายเหตุ: โปรเจกต์นี้ใช้ Bearer token ผ่าน Header `Authorization` เป็นหลัก ไม่ใช้ cookie session สำหรับการเรียก API
 
 ## Rate Limit
 

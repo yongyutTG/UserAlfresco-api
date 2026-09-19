@@ -1,9 +1,7 @@
-const config = require("../../config/env");
 const authService = require("./auth.service");
-const { clearUserSessionCookie, setUserSessionCookie } = require("../../utils/httpSession");
 const { handleError } = require("../../middlewares/errorHandler");
 
-//ฟังชันล็อกอินผู้ใช้และตั้งค่า cookie session
+//ฟังชันล็อกอินผู้ใช้และคืน Bearer token สำหรับเรียก API
 async function login(req, res) {
   try {
     const username = String(req.body.username || "").trim();
@@ -13,9 +11,8 @@ async function login(req, res) {
       return res.status(400).json({ message: "Missing username or password" });
     }
 
-    //รับค่าจาก authService.login และตั้งค่า cookie session ของผู้ใช้
+    //รับค่าจาก authService.login แล้วส่ง accessToken กลับให้ client นำไปแนบ Authorization: Bearer
     const result = await authService.login(username, password);
-    setUserSessionCookie(res, result.accessToken, config.userSessionTtlMs);
     res.json(result);
   } catch (err) {
     handleError(res, "Cannot login to Alfresco", err);
@@ -35,7 +32,6 @@ function me(req, res) {
 
 function logout(req, res) {
   authService.logout(req.userSessionToken);
-  clearUserSessionCookie(res);
   res.json({ ok: true });
 }
 

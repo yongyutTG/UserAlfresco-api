@@ -12,7 +12,7 @@ UserAlfresco-api/
 │   │   ├── config/
 │   │   │   └── env.js          # โหลด .env และรวม config เช่น port, alfrescoHost, CORS, rate limit
 │   │   ├── middlewares/
-│   │   │   ├── auth.js         # requireUserSession ตรวจ Bearer token/cookie
+│   │   │   ├── auth.js         # requireUserSession ตรวจ Bearer token
 │   │   │   ├── cors.js         # ตั้งค่า CORS
 │   │   │   ├── errorHandler.js # handleError/notFound
 │   │   │   └── rateLimit.js    # จำกัด request แยก login/API
@@ -31,7 +31,7 @@ UserAlfresco-api/
 │   │   └── utils/
 │   │       ├── authHeader.js   # สร้าง Basic Auth ไป Alfresco
 │   │       ├── cmis.js         # helper สำหรับ CMIS path/query/object mapping
-│   │       ├── httpSession.js  # อ่าน Bearer/cookie และ set/clear cookie
+│   │       ├── httpSession.js  # อ่าน Bearer token จาก Authorization header
 │   │       └── pagination.js   # parse maxItems/skipCount
 │   ├── server.js               # start server เท่านั้น
 │   ├── nodemon.json
@@ -39,8 +39,6 @@ UserAlfresco-api/
 │   └── package.json
 ├── docs/
 │   └── API.md                  # เอกสาร API
-├── frontend/
-│   └── documents/
 ├── ecosystem.config.js         # PM2 config ชี้ cwd ไป backend/
 └── .env
 ```
@@ -57,7 +55,7 @@ POST /auth/login
   -> auth.service.login()
   -> auth.repo.validateAlfrescoLogin()
   -> auth.session.createUserSession()
-  -> setUserSessionCookie()
+  -> ส่ง accessToken กลับให้ client
 ```
 
 `loginRateLimiter` ใช้ค่า `LOGIN_RATE_LIMIT_WINDOW_MS` และ `LOGIN_RATE_LIMIT_MAX`
@@ -70,7 +68,7 @@ GET /user-api/alfresco/*
   -> backend/src/middlewares/rateLimit.js
   -> backend/src/app.js mount requireUserSession
   -> backend/src/middlewares/auth.js
-  -> getBearerToken() หรือ getCookie()
+  -> getBearerToken()
   -> auth.session.touchUserSession()
   -> set req.alfrescoAuthHeaders
 ```
@@ -87,7 +85,7 @@ GET /user-api/alfresco/*
   -> ถ้าเป็น OPTIONS จะตอบ 204
 ```
 
-ถ้าตั้ง `CORS_ALLOWED_ORIGINS=*` จะอนุญาตทุก origin โดยตอบ `Access-Control-Allow-Origin` เป็น origin ที่ request ส่งมา เพื่อให้ใช้กับ cookie/session ได้
+ถ้าตั้ง `CORS_ALLOWED_ORIGINS=*` จะอนุญาตทุก origin โดยตอบ `Access-Control-Allow-Origin` เป็น origin ที่ request ส่งมา
 
 ### List folders
 
@@ -191,7 +189,9 @@ Base URL:
 
 ```text
 http://172.17.1.21/alfresco/api/-default-/public/cmis/versions/1.1/browser
+Authorization: Basic base64(username:password)
 ```
+
 
 ตัวอย่าง endpoint:
 

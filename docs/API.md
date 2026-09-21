@@ -171,10 +171,10 @@ Content-Type: application/json
 
 ## Body Parameters
 
-| ชื่อ | อยู่ที่ | จำเป็น | ตัวอย่าง | ความหมาย |
+| ชื่อ        | อยู่ที่      | จำเป็น | ตัวอย่าง | ความหมาย |
 |---|---|---|---|---|
-| `username` | JSON body | ใช่ | `Administrator` | username ของ Alfresco |
-| `password` | JSON body | ใช่ | `password` | password ของ Alfresco |
+| `username`| JSON body | ใช่    | `Administrator` | username ของ Alfresco |
+| `password`| JSON body | ใช่    | `password` | password ของ Alfresco |
 
 ## ตัวอย่าง Request
 
@@ -1208,12 +1208,16 @@ Content-Type: application/json
 
 ไม่ควรส่ง `username/password` ไปกับ API เอกสารทุกครั้ง
 
+และ frontend ไม่ควรส่ง `Authorization: Basic base64(username:password)` ไปหา Alfresco โดยตรง เพราะจะทำให้ username/password ของ Alfresco ไปอยู่ใน browser เช่นเห็นได้จาก DevTools, network request หรือเสี่ยงถูกขโมยเมื่อหน้าเว็บมีช่องโหว่ XSS
+
 แนวที่แนะนำ:
 
 ```text
 1. Login ครั้งเดียวที่ /auth/login
 2. ได้ accessToken
 3. ใช้ Bearer token เรียก /user-api/alfresco/*
+4. UserAlfresco-api เป็นคนถือ Basic Auth ของ user ใน memory session
+5. UserAlfresco-api เรียก Alfresco CMIS แทน frontend
 ```
 
-เพราะปลอดภัยและจัดการง่ายกว่าการส่ง password ทุก request
+เพราะปลอดภัยและจัดการง่ายกว่าการส่ง password ทุก request หรือให้ browser ยิง Alfresco ตรงด้วย Basic Auth

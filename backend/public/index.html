@@ -6,26 +6,68 @@
   <title>UserAlfresco API</title>
   <style>
     body { margin: 0; font-family: Tahoma, Arial, sans-serif; background: #f6f7f9; color: #172033; line-height: 1.6; }
-    main { width: min(960px, calc(100% - 32px)); margin: 28px auto 48px; }
+    main { width: min(1040px, calc(100% - 32px)); margin: 28px auto 48px; }
     section { background: #fff; border: 1px solid #d9dee7; border-radius: 8px; padding: 18px; margin-bottom: 14px; }
     h1 { margin: 0 0 8px; font-size: 28px; }
     h2 { margin: 0 0 10px; font-size: 19px; }
+    h3 { margin: 14px 0 8px; font-size: 16px; }
     pre { background: #0f172a; color: #e5edf7; padding: 14px; border-radius: 8px; overflow-x: auto; }
     code { font-family: Consolas, Monaco, monospace; }
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    th, td { border: 1px solid #d9dee7; padding: 8px 10px; text-align: left; vertical-align: top; }
+    th { background: #f1f5f9; }
     .note { border-left: 4px solid #0f766e; background: #eef7f6; padding: 10px 12px; border-radius: 6px; }
+    .warn { border-left-color: #b45309; background: #fff7ed; }
+    .muted { color: #64748b; }
   </style>
 </head>
 <body>
   <main>
     <section>
       <h1>UserAlfresco API</h1>
-      <p>โปรเจคนี้แยกจากของเดิม ใช้ Alfresco username/password ของ user เพื่อให้ permission การเห็น folder/file เป็นไปตามสิทธิ์ใน Alfresco จริง</p>
-      <p class="note">ของเดิม <code>alfresco-api</code> ยังใช้ได้เหมือนเดิมที่ port 3000 ส่วนโปรเจคใหม่นี้ default ใช้ port 3001</p>
-      <p class="note">หน้า login แยกอยู่ที่ <a href="frontend/">/login/</a> และหน้าค้นหาไฟล์อยู่ที่ <a href="/frontend/">/frontend/</a></p>
+      <p>API Gateway สำหรับเรียก Alfresco ตามสิทธิ์ของ user ที่ login จริง โดย client ต้อง login เพื่อรับ <code>accessToken</code> แล้วแนบเป็น Bearer token ทุกครั้งที่เรียกกลุ่ม <code>/user-api/alfresco/*</code></p>
+      <p class="note"><code>UserAlfresco-api</code> โปรเจคนี้ default ใช้ port 3001</p>
+      <p class="note">โปรเจคนี้เหลือเฉพาะ backend API และหน้าเอกสาร API ส่วนหน้าบ้านจริงแยกไปอยู่โปรเจค <code>Alfresco</code></p>
+      <p class="note warn">โปรเจคนี้ใช้ <code>Authorization: Bearer &lt;accessToken&gt;</code> เป็นหลัก ไม่ใช้ cookie session สำหรับ API</p>
     </section>
 
     <section>
-      <h2>1. Login</h2>
+      <h2>สรุป Endpoint ทั้งหมด</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Method</th>
+            <th>Path</th>
+            <th>Token</th>
+            <th>ใช้ทำอะไร</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>GET</td><td><code>/health</code></td><td>ไม่ต้อง</td><td>ตรวจสอบว่า backend เชื่อม Alfresco ได้หรือไม่</td></tr>
+          <tr><td>POST</td><td><code>/auth/login</code></td><td>ไม่ต้อง</td><td>login ด้วย Alfresco username/password เพื่อรับ accessToken</td></tr>
+          <tr><td>GET</td><td><code>/auth/me</code></td><td>ต้อง</td><td>ดู session ปัจจุบันของ token</td></tr>
+          <tr><td>POST</td><td><code>/auth/logout</code></td><td>ต้อง</td><td>ลบ session token ฝั่ง backend</td></tr>
+          <tr><td>GET</td><td><code>/user-api/alfresco/folders</code></td><td>ต้อง</td><td>ดู folder ลูกชั้นเดียวใต้ path ที่ระบุ</td></tr>
+          <tr><td>GET</td><td><code>/user-api/alfresco/folders/tree</code></td><td>ต้อง</td><td>ดู folder ย่อยหลายชั้นใต้ path ที่ระบุ</td></tr>
+          <tr><td>GET</td><td><code>/user-api/alfresco/documents</code></td><td>ต้อง</td><td>list เอกสารใต้ folder รวม folder ย่อย</td></tr>
+          <tr><td>GET</td><td><code>/user-api/alfresco/documents/search</code></td><td>ต้อง</td><td>ค้นหาเอกสารด้วย q หรือ exactName</td></tr>
+          <tr><td>GET</td><td><code>/user-api/alfresco/documents/location</code></td><td>ต้อง</td><td>ดู parent path ของไฟล์ด้วย query id</td></tr>
+          <tr><td>GET</td><td><code>/user-api/alfresco/documents/:id/location</code></td><td>ต้อง</td><td>ดู parent path ของไฟล์แบบ route เก่า</td></tr>
+          <tr><td>PATCH</td><td><code>/user-api/alfresco/documents?id=...</code></td><td>ต้อง</td><td>แก้ชื่อไฟล์ แบบแนะนำสำหรับ Alfresco id ที่มี ;1.0</td></tr>
+          <tr><td>PATCH</td><td><code>/user-api/alfresco/documents/:id</code></td><td>ต้อง</td><td>แก้ชื่อไฟล์ผ่าน path parameter</td></tr>
+          <tr><td>GET</td><td><code>/user-api/alfresco/documents/:id/content</code></td><td>ต้อง</td><td>เปิดหรือดาวน์โหลดไฟล์</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section>
+      <h2>1. Health Check</h2>
+      <pre><code>GET http://localhost:3001/health</code></pre>
+      <p class="muted">ใช้เช็ก backend และข้อมูล server Alfresco เบื้องต้น</p>
+    </section>
+
+    <section>
+      <h2>2. Login</h2>
       <pre><code>POST http://localhost:3001/auth/login
 Content-Type: application/json
 
@@ -33,35 +75,88 @@ Content-Type: application/json
   "username": "alfresco_user",
   "password": "alfresco_password"
 }</code></pre>
-      <p>Response จะได้ <code>accessToken</code> เอาไปใช้เป็น Bearer token ของ user session</p>
+      <p>Response จะได้ <code>accessToken</code> สำหรับใช้เป็น Bearer token</p>
+      <pre><code>{
+  "tokenType": "Bearer",
+  "accessToken": "ACCESS_TOKEN",
+  "expiresInMs": 28800000,
+  "username": "alfresco_user"
+}</code></pre>
     </section>
 
     <section>
-      <h2>2. List folders ตามสิทธิ์ user</h2>
+      <h2>3. Current User</h2>
+      <pre><code>GET http://localhost:3001/auth/me
+Authorization: Bearer &lt;accessToken&gt;</code></pre>
+    </section>
+
+    <section>
+      <h2>4. Logout</h2>
+      <pre><code>POST http://localhost:3001/auth/logout
+Authorization: Bearer &lt;accessToken&gt;</code></pre>
+    </section>
+
+    <section>
+      <h2>5. List folders ชั้นเดียว</h2>
       <pre><code>GET http://localhost:3001/user-api/alfresco/folders?path=/Sites/tg-saving/documentLibrary
 Authorization: Bearer &lt;accessToken&gt;</code></pre>
+      <p class="muted">ใช้ดู folder ลูกโดยตรงของ path ที่ส่งมา</p>
     </section>
 
     <section>
-      <h2>3. List documents ตามสิทธิ์ user</h2>
+      <h2>6. List folder tree</h2>
+      <pre><code>GET http://localhost:3001/user-api/alfresco/folders/tree?path=/Sites/tg-saving/documentLibrary&amp;maxDepth=2
+Authorization: Bearer &lt;accessToken&gt;</code></pre>
+      <p class="muted">ใช้ดู folder ย่อยหลายชั้น Response มีทั้ง <code>folders</code> แบบ flat list และ <code>tree</code> แบบ parent/children</p>
+    </section>
+
+    <section>
+      <h2>7. List documents</h2>
       <pre><code>GET http://localhost:3001/user-api/alfresco/documents?folderPath=/Sites/tg-saving/documentLibrary/การเงิน&amp;maxItems=20&amp;skipCount=0
 Authorization: Bearer &lt;accessToken&gt;</code></pre>
+      <p class="muted">ถ้าไม่ส่ง q จะเป็นการ list เอกสารทั้งหมดใต้ folder นั้น รวม folder ย่อยด้วย CMIS IN_TREE</p>
     </section>
 
     <section>
-      <h2>4. Search documents ตามสิทธิ์ user</h2>
+      <h2>8. Search documents แบบบางส่วน</h2>
       <pre><code>GET http://localhost:3001/user-api/alfresco/documents/search?folderPath=/Sites/tg-saving/documentLibrary/การเงิน&amp;q=026277&amp;maxItems=20&amp;skipCount=0
 Authorization: Bearer &lt;accessToken&gt;</code></pre>
     </section>
 
     <section>
-      <h2>5. Open file</h2>
-      <pre><code>GET http://localhost:3001/user-api/alfresco/documents/DOCUMENT_ID/content?name=file.pdf
+      <h2>9. Search documents แบบชื่อไฟล์ตรงตัว</h2>
+      <pre><code>GET http://localhost:3001/user-api/alfresco/documents/search?folderPath=/Sites/tg-saving/documentLibrary&amp;exactName=23017_116969.pdf&amp;maxItems=20&amp;skipCount=0
 Authorization: Bearer &lt;accessToken&gt;</code></pre>
     </section>
 
     <section>
-      <h2>6. Rename file</h2>
+      <h2>10. Get document location</h2>
+      <h3>แบบแนะนำ query id</h3>
+      <pre><code>GET http://localhost:3001/user-api/alfresco/documents/location?id=DOCUMENT_ID
+Authorization: Bearer &lt;accessToken&gt;</code></pre>
+      <h3>แบบ route เก่า</h3>
+      <pre><code>GET http://localhost:3001/user-api/alfresco/documents/DOCUMENT_ID/location
+Authorization: Bearer &lt;accessToken&gt;</code></pre>
+    </section>
+
+    <section>
+      <h2>11. Open file</h2>
+      <pre><code>GET http://localhost:3001/user-api/alfresco/documents/DOCUMENT_ID/content?name=file.pdf
+Authorization: Bearer &lt;accessToken&gt;</code></pre>
+      <p class="muted">ถ้าเรียกจาก frontend ต้องใช้ fetch พร้อม Bearer token แล้วเปิดด้วย Blob URL เพราะ window.open แนบ Authorization header ไม่ได้</p>
+    </section>
+
+    <section>
+      <h2>12. Rename file</h2>
+      <h3>แบบแนะนำ query id</h3>
+      <pre><code>PATCH http://localhost:3001/user-api/alfresco/documents?id=DOCUMENT_ID
+Authorization: Bearer &lt;accessToken&gt;
+Content-Type: application/json
+
+{
+  "name": "new-file-name.pdf"
+}</code></pre>
+      <h3>แบบ path parameter</h3>
       <pre><code>PATCH http://localhost:3001/user-api/alfresco/documents/DOCUMENT_ID
 Authorization: Bearer &lt;accessToken&gt;
 Content-Type: application/json
@@ -73,5 +168,3 @@ Content-Type: application/json
   </main>
 </body>
 </html>
-
-

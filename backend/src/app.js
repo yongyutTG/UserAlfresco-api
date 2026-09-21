@@ -19,11 +19,6 @@ const apiRateLimiter = createRateLimiter({
 app.use(allowConfiguredCors);
 app.use(express.json({ limit: "1mb" }));
 
-// Frontend แยกออกจาก public เพื่อให้จัดการ UI เป็นส่วนของตัวเอง
-// /login/ และ /frontend/ จะอ่านจากโฟลเดอร์ frontend ก่อน
-app.use("/login", express.static(path.join(__dirname, "..", "..", "frontend", "login")));
-app.use("/frontend", express.static(path.join(__dirname, "..", "..", "frontend", "documents")));
-
 app.use(express.static(path.join(__dirname, "..", "public")));
 
 app.get("/", (req, res) => {

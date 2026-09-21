@@ -1,11 +1,8 @@
 # UserAlfresco API
-how run 
-pm2 start ecosystem.config.js
-
-
 
 เอกสาร flow แบบ Step 1, 2, 3: [FLOW_STEPS.md](FLOW_STEPS.md)
 โครงสร้างโปรเจคแบบ backend modules: [PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md)
+เอกสาร API แบบละเอียด: [docs/API.md](docs/API.md)
 
 โปรเจคนี้เป็น API Gateway แยกจาก `alfresco-api` เดิม สำหรับกรณีที่ต้องการให้ user แต่ละคนเห็น folder/file ตามสิทธิ์ใน Alfresco จริง
 
@@ -26,11 +23,19 @@ Node.js เรียก Alfresco CMIS ด้วยสิทธิ์ของ us
 
 ## Setup
 
+รันแบบ dev:
+
 ```bash
 cd C:\xampp\htdocs\UserAlfresco-api
 cd backend
 npm install
 npm run dev
+```
+
+รันด้วย PM2:
+
+```bash
+pm2 start ecosystem.config.js
 ```
 
 สร้างหรือแก้ไฟล์ `.env` ที่ root โปรเจกต์:
@@ -73,23 +78,6 @@ UserAlfresco-api/
 │   ├── server.js
 │   └── package.json
 │
-├── frontend/
-│   ├── login/
-│   │   ├── index.html
-│   │   ├── login.css
-│   │   └── login.js
-│   ├── documents/
-│   │   ├── index.html
-│   │   ├── documents.css
-│   │   └── documents.js
-│   └── shared/
-│       ├── css/
-│       │   └── base.css
-│       └── js/
-│           ├── api.js
-│           ├── auth.js
-│           └── storage.js
-│
 ├── docs/
 │   └── API.md
 ├── .env
@@ -98,6 +86,18 @@ UserAlfresco-api/
 ```
 
 ## API
+
+เปิดหน้าเอกสาร API ใน browser:
+
+```http
+GET /
+```
+
+ตรวจสอบการเชื่อมต่อ Alfresco:
+
+```http
+GET /health
+```
 
 ### Login
 
@@ -170,6 +170,27 @@ Authorization: Bearer <accessToken>
 
 ผลค้นหาจะมี field `allowRename` เช่นเดียวกับ list documents
 
+ค้นหาแบบชื่อไฟล์ตรงตัว:
+
+```http
+GET /user-api/alfresco/documents/search?folderPath=/Sites/tg-saving/documentLibrary&exactName=23017_116969.pdf&maxItems=20&skipCount=0
+Authorization: Bearer <accessToken>
+```
+
+### Get document location
+
+```http
+GET /user-api/alfresco/documents/location?id=DOCUMENT_ID
+Authorization: Bearer <accessToken>
+```
+
+route เก่าที่ยังรองรับ:
+
+```http
+GET /user-api/alfresco/documents/:id/location
+Authorization: Bearer <accessToken>
+```
+
 ### Update document name
 
 ```http
@@ -192,10 +213,15 @@ GET /user-api/alfresco/documents/:id/content?name=file.pdf
 Authorization: Bearer <accessToken>
 ```
 
+ถ้าเรียกจาก frontend ต้องใช้ `fetch` พร้อม Bearer token แล้วเปิดไฟล์ด้วย Blob URL เพราะ `window.open(url)` แนบ `Authorization` header ไม่ได้
+
 ## Security Notes
 
 - โปรเจคนี้ไม่เก็บ password ลงไฟล์หรือ database
 - session อยู่ใน memory ของ Node.js เท่านั้น restart แล้ว session หาย
+- API ใช้ Bearer token เป็นหลัก ไม่ใช้ cookie session
+- Frontend ไม่ควรส่ง `Authorization: Basic base64(username:password)` ไปหา Alfresco โดยตรง เพราะ username/password จะไปอยู่ใน browser และอาจถูกเห็นผ่าน DevTools หรือถูกขโมยเมื่อมี XSS
+- Flow ที่ถูกต้องคือ frontend login กับ `UserAlfresco-api` เพื่อรับ `accessToken` แล้วเรียก API ด้วย `Authorization: Bearer <accessToken>` ส่วน backend จะเป็นคนเก็บ Basic Auth ของ user ไว้ใน memory session และนำไปเรียก Alfresco เอง
 - ถ้าใช้งานจริงควรเปิดผ่าน HTTPS
 - ถ้ามีหลาย server ควรเปลี่ยนจาก memory session เป็น Redis/session store
 - permission ที่ได้จะขึ้นกับ Alfresco user ที่ login

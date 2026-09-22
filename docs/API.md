@@ -281,6 +281,8 @@ POST /auth/logout
 
 ลบ session/token ฝั่ง backend
 
+ถ้าเรียกสำเร็จ backend จะบันทึก audit log action `LOGOUT` ลง `backend/logs/audit.log`
+
 ## ต้องแนบ token ไหม
 
 ต้องแนบ
@@ -955,6 +957,7 @@ Authorization: Bearer ACCESS_TOKEN
 | ชื่อ | อยู่ที่ | จำเป็น | ตัวอย่าง | ความหมาย |
 |---|---|---|---|---|
 | `name` | Query string | ไม่จำเป็น | `file.pdf` | ชื่อไฟล์ที่ใช้ตอนเปิด/ดาวน์โหลด |
+| `action` | Query string | ไม่จำเป็น | `download` | ถ้าส่ง `download` backend จะบันทึก audit เป็น `DOWNLOAD_FILE`; ถ้าไม่ส่งจะเป็น `OPEN_FILE` |
 
 ## สำคัญเรื่อง id
 
@@ -974,6 +977,13 @@ Authorization: Bearer ACCESS_TOKEN
 
 ```http
 GET http://localhost:3001/user-api/alfresco/documents/7b815e16-a594-4864-9665-cfda64e8d880%3B1.0/content?name=file.pdf
+Authorization: Bearer ACCESS_TOKEN
+```
+
+ตัวอย่างดาวน์โหลดไฟล์:
+
+```http
+GET http://localhost:3001/user-api/alfresco/documents/7b815e16-a594-4864-9665-cfda64e8d880%3B1.0/content?name=file.pdf&action=download
 Authorization: Bearer ACCESS_TOKEN
 ```
 
@@ -1103,6 +1113,7 @@ Content-Type: application/json
 | `GET` | `/auth/me` | ต้อง | Header Bearer | ดู session ปัจจุบัน |
 | `POST` | `/auth/logout` | ต้อง | Header Bearer | logout token |
 | `GET` | `/user-api/alfresco/folders` | ต้อง | Query string | ดู folder |
+| `GET` | `/user-api/alfresco/folders/tree` | ต้อง | Query string | ดู folder tree หลายชั้น |
 | `GET` | `/user-api/alfresco/documents` | ต้อง | Query string | list เอกสาร |
 | `GET` | `/user-api/alfresco/documents/search` | ต้อง | Query string | ค้นหาเอกสาร |
 | `GET` | `/user-api/alfresco/documents/location?id=...` | ต้อง | Query string | ดูตำแหน่งไฟล์ |
@@ -1127,9 +1138,58 @@ Content-Type: application/json
 
 หมายเหตุ: `{path}` และ `{folderPath}` จะถูก encode ทีละ segment ในโค้ด `backend/src/utils/cmis.js`
 
+หมายเหตุเพิ่มเติมสำหรับ `/folders/tree`: ถ้า Alfresco บาง user/version ตอบ error กับ CMIS folder query ระบบจะ fallback ไปเรียก `cmisselector=children` ทีละชั้นตาม `maxDepth` เพื่อให้ยังแสดง folder ตามสิทธิ์ user ได้
+
 ---
 
-# 14. Error ที่พบบ่อย
+# 14. Audit Log
+
+ระบบบันทึก audit log เป็น JSON Lines ที่:
+
+```text
+backend/logs/audit.log
+```
+
+รูปแบบข้อมูล:
+
+```json
+{
+  "time": "2026-09-22T13:07:35.994Z",
+  "username": "yongyut",
+  "action": "OPEN_FILE",
+  "documentId": "abc-123",
+  "fileName": "file.pdf",
+  "folderPath": null,
+  "searchText": null,
+  "requestPath": "/user-api/alfresco/documents/abc-123/content?name=file.pdf",
+  "method": "GET",
+  "ip": "127.0.0.1",
+  "userAgent": "Mozilla/5.0",
+  "status": "SUCCESS",
+  "message": "Open file requested"
+}
+```
+
+Action ที่บันทึก:
+
+| Action | เกิดเมื่อ |
+|---|---|
+| `LOGIN` | เรียก `POST /auth/login` |
+| `LOGOUT` | เรียก `POST /auth/logout` พร้อม Bearer token |
+| `LIST_FOLDERS` | เรียก `GET /user-api/alfresco/folders` |
+| `LIST_FOLDER_TREE` | เรียก `GET /user-api/alfresco/folders/tree` |
+| `LIST_DOCUMENTS` | เรียก `GET /user-api/alfresco/documents` แบบ list |
+| `SEARCH_DOCUMENTS` | เรียก search หรือ list documents พร้อม q/exactName |
+| `VIEW_FILE_DETAIL` | เรียก endpoint ดูรายละเอียด/ตำแหน่งไฟล์ |
+| `OPEN_FILE` | เปิดไฟล์ผ่าน content endpoint |
+| `DOWNLOAD_FILE` | เรียก content endpoint พร้อม `action=download` |
+| `RENAME_FILE` | เรียก PATCH แก้ชื่อไฟล์ |
+
+หมายเหตุ: ถ้า frontend ลบ token เองโดยไม่เรียก `/auth/logout` backend จะไม่สามารถบันทึก `LOGOUT` ได้
+
+---
+
+# 15. Error ที่พบบ่อย
 
 ## ไม่ได้แนบ token
 
@@ -1204,7 +1264,7 @@ Content-Type: application/json
 
 ---
 
-# 15. หมายเหตุเรื่องความปลอดภัย
+# 16. หมายเหตุเรื่องความปลอดภัย
 
 ไม่ควรส่ง `username/password` ไปกับ API เอกสารทุกครั้ง
 

@@ -33,6 +33,12 @@ npm run dev
 pm2 start ecosystem.config.js
 ```
 
+หลังแก้โค้ด backend ให้ restart PM2 เพื่อโหลดไฟล์ล่าสุด:
+
+```bash
+pm2 restart ecosystem.config.js
+```
+
 Step 2: `backend/server.js` โหลด Express app
 
 ```js
@@ -202,6 +208,8 @@ alfresco.route.js
 SELECT * FROM cmis:folder WHERE IN_TREE('folderObjectId')
 ```
 
+ถ้า Alfresco ตอบ error กับ query นี้ในบาง user/version service จะ fallback ไปเรียก `cmisselector=children` ทีละชั้นตาม `maxDepth` แทน เพื่อให้ยังได้ folder ที่ user มีสิทธิ์เห็น
+
 จากนั้น service คำนวณ `depth` และประกอบ response เป็น:
 
 ```text
@@ -268,7 +276,7 @@ alfresco.route.js
 
 ---
 
-## Flow 9: Get Document Location
+## Flow 9: View File Detail / Get Document Location
 
 ```http
 GET /user-api/alfresco/documents/location?id=DOCUMENT_ID
@@ -280,6 +288,7 @@ Authorization: Bearer <accessToken>
 ```text
 alfresco.route.js
   -> alfrescoController.getDocumentLocation()
+  -> auditLogger.audit(req, "VIEW_FILE_DETAIL")
   -> alfrescoService.getDocumentLocation()
   -> alfrescoRepo.getNodePathByObjectId()
   -> fallback alfrescoRepo.getObjectParents()
@@ -320,14 +329,81 @@ GET /user-api/alfresco/documents/:id/content?name=file.pdf
 Authorization: Bearer <accessToken>
 ```
 
+ดาวน์โหลดไฟล์ใช้ endpoint เดียวกัน แต่เพิ่ม `action=download`:
+
+```http
+GET /user-api/alfresco/documents/:id/content?name=file.pdf&action=download
+Authorization: Bearer <accessToken>
+```
+
 ลำดับไฟล์:
 
 ```text
 alfresco.route.js
   -> alfrescoController.streamDocumentContent()
+  -> auditLogger.audit(req, "OPEN_FILE" หรือ "DOWNLOAD_FILE")
   -> alfrescoService.streamDocumentContent()
   -> alfrescoRepo.getDocumentContentStream()
   -> result.data.pipe(res)
 ```
 
 ถ้าเรียกจาก browser frontend ต้องใช้ `fetch` พร้อม Bearer token แล้วเปิดด้วย Blob URL เพราะ `window.open(url)` แนบ `Authorization` header ไม่ได้
+
+---
+
+## Flow 12: Logout
+
+```http
+POST /auth/logout
+Authorization: Bearer <accessToken>
+```
+
+ลำดับไฟล์:
+
+```text
+auth.route.js
+  -> requireUserSession
+  -> authController.logout()
+  -> auditLogger.audit(req, "LOGOUT")
+  -> authService.logout()
+  -> auth.session.deleteUserSession()
+```
+
+หมายเหตุ: backend จะบันทึก `LOGOUT` ลง audit log เฉพาะเมื่อ client เรียก `/auth/logout` จริง ๆ ถ้า frontend ลบ token ใน browser อย่างเดียว backend จะไม่รู้ว่า user logout
+
+---
+
+## Flow 13: Audit Log
+
+ไฟล์หลัก:
+
+```text
+backend/src/utils/auditLogger.js
+```
+
+ตำแหน่ง log:
+
+```text
+backend/logs/audit.log
+```
+
+รูปแบบเป็น JSON Lines:
+
+```json
+{"time":"2026-09-22T13:07:35.994Z","username":"yongyut","action":"OPEN_FILE","documentId":"abc-123","fileName":"file.pdf","folderPath":null,"searchText":null,"requestPath":"/user-api/alfresco/documents/abc-123/content?name=file.pdf","method":"GET","ip":"127.0.0.1","userAgent":"Mozilla/5.0","status":"SUCCESS","message":"Open file requested"}
+```
+
+action ที่บันทึก เช่น:
+
+```text
+LOGIN
+LOGOUT
+LIST_FOLDERS
+LIST_FOLDER_TREE
+LIST_DOCUMENTS
+SEARCH_DOCUMENTS
+VIEW_FILE_DETAIL
+OPEN_FILE
+DOWNLOAD_FILE
+RENAME_FILE
+```

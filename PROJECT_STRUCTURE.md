@@ -29,11 +29,13 @@ UserAlfresco-api/
 │   │   │       ├── alfresco.repo.js
 │   │   │       └── alfresco.route.js
 │   │   └── utils/
+│   │       ├── auditLogger.js  # เขียน audit log ลง backend/logs/audit.log
 │   │       ├── authHeader.js   # สร้าง Basic Auth ไป Alfresco
 │   │       ├── cmis.js         # helper สำหรับ CMIS path/query/object mapping
 │   │       ├── httpSession.js  # อ่าน Bearer token จาก Authorization header
 │   │       └── pagination.js   # parse maxItems/skipCount
 │   ├── server.js               # start server เท่านั้น
+│   ├── logs/                   # runtime logs เช่น audit.log ไม่ควร commit
 │   ├── nodemon.json
 │   ├── package-lock.json
 │   └── package.json
@@ -153,6 +155,25 @@ PATCH /user-api/alfresco/documents/:id
 
 รายการเอกสารจาก list/search map field `allowRename` จาก CMIS allowable action `canUpdateProperties` เพื่อให้ frontend ซ่อนไอคอนแก้ไขชื่อไฟล์เมื่อ user ไม่มีสิทธิ์
 
+### Logout และ audit log
+
+```text
+POST /auth/logout
+  -> requireUserSession
+  -> auth.controller.logout()
+  -> auditLogger.audit(req, "LOGOUT")
+  -> auth.service.logout()
+  -> auth.session.deleteUserSession()
+```
+
+`auditLogger.js` เขียน log เป็น JSON Lines ลงไฟล์:
+
+```text
+backend/logs/audit.log
+```
+
+ตัวอย่าง action ที่ถูกบันทึก: `LOGIN`, `LOGOUT`, `LIST_FOLDERS`, `LIST_FOLDER_TREE`, `LIST_DOCUMENTS`, `SEARCH_DOCUMENTS`, `VIEW_FILE_DETAIL`, `OPEN_FILE`, `DOWNLOAD_FILE`, `RENAME_FILE`
+
 ### Open file
 
 ```text
@@ -164,6 +185,12 @@ GET /user-api/alfresco/documents/:id/content
   -> alfresco.repo.getDocumentContentStream()
   -> Alfresco CMIS cmisselector=content
   -> result.data.pipe(res)
+```
+
+ถ้าเป็นการดาวน์โหลด ให้เรียก endpoint เดียวกันพร้อม `action=download`:
+
+```text
+GET /user-api/alfresco/documents/:id/content?name=file.pdf&action=download
 ```
 
 ## หน้าที่แต่ละ layer
@@ -291,4 +318,3 @@ GET /user-api/alfresco/documents/location?id=DOCUMENT_ID
 ดู user/site/server         -> ใช้ Web Script API
 REST v1 /nodes/...          -> ใช้เฉพาะ location แบบมี CMIS fallback
 ```
-

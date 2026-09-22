@@ -1,6 +1,6 @@
 {
   "watch": ["server.js", "src", "public"],
   "ext": "js,json,html,css",
-  "ignore": ["node_modules", "log"],
+  "ignore": ["node_modules", "log", "logs", "*.log", "server.out.log", "server.err.log"],
   "exec": "node server.js"
 }

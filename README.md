@@ -38,6 +38,12 @@ npm run dev
 pm2 start ecosystem.config.js
 ```
 
+หลังแก้โค้ด backend ต้อง restart PM2 เพื่อให้ process โหลดโค้ดล่าสุด:
+
+```bash
+pm2 restart ecosystem.config.js
+```
+
 สร้างหรือแก้ไฟล์ `.env` ที่ root โปรเจกต์:
 
 ```env
@@ -136,6 +142,8 @@ POST /auth/logout
 Authorization: Bearer <accessToken>
 ```
 
+ถ้า client เรียกเส้นนี้ backend จะลบ session token และบันทึก audit log action `LOGOUT`
+
 ### List folders
 
 ```http
@@ -151,6 +159,8 @@ Authorization: Bearer <accessToken>
 ```
 
 ใช้ดึงโฟลเดอร์ย่อยทุกชั้นใต้ path หลักตามสิทธิ์ของ user ที่ login อยู่ โดย response จะมีทั้ง `folders` แบบรายการเรียงรวม และ `tree` แบบโครงสร้าง parent/children
+
+ระบบจะพยายามใช้ CMIS query หา folder tree ก่อน ถ้า Alfresco บาง user/version ไม่รองรับ จะ fallback ไปอ่าน `children` ตามชั้นแทน
 
 ### List documents
 
@@ -214,6 +224,44 @@ Authorization: Bearer <accessToken>
 ```
 
 ถ้าเรียกจาก frontend ต้องใช้ `fetch` พร้อม Bearer token แล้วเปิดไฟล์ด้วย Blob URL เพราะ `window.open(url)` แนบ `Authorization` header ไม่ได้
+
+### Download file
+
+```http
+GET /user-api/alfresco/documents/:id/content?name=file.pdf&action=download
+Authorization: Bearer <accessToken>
+```
+
+ใช้ endpoint เดียวกับ Open file แต่เพิ่ม `action=download` เพื่อให้ audit log แยกเป็น `DOWNLOAD_FILE`
+
+## Audit Log
+
+ระบบบันทึก audit log เป็น JSON Lines ที่:
+
+```text
+backend/logs/audit.log
+```
+
+ตัวอย่าง:
+
+```json
+{"time":"2026-09-22T13:07:35.994Z","username":"yongyut","action":"OPEN_FILE","documentId":"abc-123","fileName":"file.pdf","folderPath":null,"searchText":null,"requestPath":"/user-api/alfresco/documents/abc-123/content?name=file.pdf","method":"GET","ip":"127.0.0.1","userAgent":"Mozilla/5.0","status":"SUCCESS","message":"Open file requested"}
+```
+
+Action ที่เก็บ:
+
+- `LOGIN`
+- `LOGOUT`
+- `LIST_FOLDERS`
+- `LIST_FOLDER_TREE`
+- `LIST_DOCUMENTS`
+- `SEARCH_DOCUMENTS`
+- `VIEW_FILE_DETAIL`
+- `OPEN_FILE`
+- `DOWNLOAD_FILE`
+- `RENAME_FILE`
+
+หมายเหตุ: `LOGOUT` จะเกิดเฉพาะกรณี client เรียก `POST /auth/logout` พร้อม Bearer token ก่อนล้าง token ฝั่ง browser ถ้าปิด browser หรือปิด tab เฉย ๆ backend จะไม่รู้เหตุการณ์ logout
 
 ## Security Notes
 

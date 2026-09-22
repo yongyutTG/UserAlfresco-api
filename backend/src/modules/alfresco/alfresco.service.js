@@ -119,27 +119,91 @@ async function listFolders(folderPath, headers) {
   const items = await alfrescoRepo.getChildrenByPath(folderPath || "/", headers);
   return items.filter((item) => item.isFolder);
 }
+
+async function collectFolderTreeByChildren(rootPath, headers, maxDepth) {
+  const folders = [];
+  const errors = [];
+
+  async function walk(parentPath, depth) {
+    if (depth > maxDepth) return;
+
+    let children = [];
+    try {
+      children = await listFolders(parentPath, headers);
+    } catch (error) {
+      errors.push({
+        path: parentPath,
+        message: error.message,
+        status: error.response?.status || error.statusCode || null,
+      });
+      return;
+    }
+
+    for (const child of children) {
+      const childPath = child.path || joinRepositoryPath(parentPath, child.name);
+      folders.push({
+        ...child,
+        path: childPath,
+        depth,
+      });
+
+      await walk(childPath, depth + 1);
+    }
+  }
+
+  await walk(rootPath, 1);
+
+  return {
+    folders,
+    errors,
+  };
+}
 //ฟังชันดึงโฟลเดอร์ย่อยทุกชั้นจาก path หลักด้วย CMIS query ครั้งเดียว เพื่อลดปัญหา timeout จากการวนเรียก children หลายรอบ
 async function listFolderTree(folderPath, headers, options = {}) {
   const rootPath = folderPath || "/";
   const maxDepth = parsePositiveInteger(options.maxDepth, 10, 30);
   const rootFolder = await alfrescoRepo.getObjectByPath(rootPath, headers);
-  const query = `SELECT * FROM cmis:folder WHERE IN_TREE('${escapeCmisString(rootFolder.id)}')`;
-  const data = await alfrescoRepo.queryDocuments(query, headers, {
-    searchAllVersions: false,
-    maxItems: config.maxListItems,
-    skipCount: 0,
-  });
+  let folders = [];
+  let errors = [];
+  let total = null;
+  let hasMoreItems = false;
+  let source = "cmis-query";
 
-  const folders = (data.results || [])
-    .map((item) => mapCmisObject(item))
-    .filter((folder) => folder.isFolder && folder.path)
-    .map((folder) => ({
-      ...folder,
-      depth: getPathDepthFromRoot(folder.path, rootPath),
-    }))
-    .filter((folder) => folder.depth && folder.depth <= maxDepth)
-    .sort((a, b) => normalizePathForCompare(a.path).localeCompare(normalizePathForCompare(b.path), "th"));
+  try {
+    const query = `SELECT * FROM cmis:folder WHERE IN_TREE('${escapeCmisString(rootFolder.id)}')`;
+    const data = await alfrescoRepo.queryDocuments(query, headers, {
+      searchAllVersions: false,
+      maxItems: config.maxListItems,
+      skipCount: 0,
+    });
+
+    folders = (data.results || [])
+      .map((item) => mapCmisObject(item))
+      .filter((folder) => folder.isFolder && folder.path)
+      .map((folder) => ({
+        ...folder,
+        depth: getPathDepthFromRoot(folder.path, rootPath),
+      }))
+      .filter((folder) => folder.depth && folder.depth <= maxDepth);
+
+    total = data.numItems ?? null;
+    hasMoreItems = Boolean(data.hasMoreItems);
+  } catch (error) {
+    source = "children-fallback";
+    errors.push({
+      path: rootPath,
+      message: `CMIS folder query failed, fallback to children: ${error.message}`,
+      status: error.response?.status || error.statusCode || null,
+    });
+
+    const fallback = await collectFolderTreeByChildren(rootPath, headers, maxDepth);
+    folders = fallback.folders;
+    errors = [...errors, ...fallback.errors];
+    total = folders.length;
+    hasMoreItems = false;
+  }
+
+  folders = folders.sort((a, b) => normalizePathForCompare(a.path).localeCompare(normalizePathForCompare(b.path), "th"));
 
   const tree = buildFolderTreeFromFlatFolders(folders, rootPath);
 
@@ -148,10 +212,11 @@ async function listFolderTree(folderPath, headers, options = {}) {
     folderId: rootFolder.id,
     maxDepth,
     count: folders.length,
-    total: data.numItems ?? null,
-    hasMoreItems: Boolean(data.hasMoreItems),
+    total,
+    hasMoreItems,
     skippedCount: 0,
-    errors: [],
+    source,
+    errors,
     folders,
     tree,
   };

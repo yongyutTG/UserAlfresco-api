@@ -94,6 +94,7 @@ Authorization: Bearer &lt;accessToken&gt;</code></pre>
       <h2>4. Logout</h2>
       <pre><code>POST http://localhost:3001/auth/logout
 Authorization: Bearer &lt;accessToken&gt;</code></pre>
+      <p class="muted">ถ้าเรียกสำเร็จ backend จะลบ session token และบันทึก audit log action <code>LOGOUT</code></p>
     </section>
 
     <section>
@@ -108,6 +109,7 @@ Authorization: Bearer &lt;accessToken&gt;</code></pre>
       <pre><code>GET http://localhost:3001/user-api/alfresco/folders/tree?path=/Sites/tg-saving/documentLibrary&amp;maxDepth=2
 Authorization: Bearer &lt;accessToken&gt;</code></pre>
       <p class="muted">ใช้ดู folder ย่อยหลายชั้น Response มีทั้ง <code>folders</code> แบบ flat list และ <code>tree</code> แบบ parent/children</p>
+      <p class="muted">ระบบจะลองใช้ CMIS query ก่อน ถ้า Alfresco บาง user/version ไม่รองรับจะ fallback ไปอ่าน <code>children</code> ทีละชั้นตาม <code>maxDepth</code></p>
     </section>
 
     <section>
@@ -143,6 +145,9 @@ Authorization: Bearer &lt;accessToken&gt;</code></pre>
       <h2>11. Open file</h2>
       <pre><code>GET http://localhost:3001/user-api/alfresco/documents/DOCUMENT_ID/content?name=file.pdf
 Authorization: Bearer &lt;accessToken&gt;</code></pre>
+      <h3>Download file</h3>
+      <pre><code>GET http://localhost:3001/user-api/alfresco/documents/DOCUMENT_ID/content?name=file.pdf&amp;action=download
+Authorization: Bearer &lt;accessToken&gt;</code></pre>
       <p class="muted">ถ้าเรียกจาก frontend ต้องใช้ fetch พร้อม Bearer token แล้วเปิดด้วย Blob URL เพราะ window.open แนบ Authorization header ไม่ได้</p>
     </section>
 
@@ -164,6 +169,28 @@ Content-Type: application/json
 {
   "name": "new-file-name.pdf"
 }</code></pre>
+    </section>
+
+    <section>
+      <h2>13. Audit log</h2>
+      <p>ระบบบันทึก audit log เป็น JSON Lines ที่ <code>backend/logs/audit.log</code></p>
+      <pre><code>{
+  "time": "2026-09-22T13:07:35.994Z",
+  "username": "yongyut",
+  "action": "OPEN_FILE",
+  "documentId": "abc-123",
+  "fileName": "file.pdf",
+  "folderPath": null,
+  "searchText": null,
+  "requestPath": "/user-api/alfresco/documents/abc-123/content?name=file.pdf",
+  "method": "GET",
+  "ip": "127.0.0.1",
+  "userAgent": "Mozilla/5.0",
+  "status": "SUCCESS",
+  "message": "Open file requested"
+}</code></pre>
+      <p class="muted">Action ที่เก็บ เช่น <code>LOGIN</code>, <code>LOGOUT</code>, <code>LIST_FOLDERS</code>, <code>LIST_FOLDER_TREE</code>, <code>LIST_DOCUMENTS</code>, <code>SEARCH_DOCUMENTS</code>, <code>VIEW_FILE_DETAIL</code>, <code>OPEN_FILE</code>, <code>DOWNLOAD_FILE</code>, <code>RENAME_FILE</code></p>
+      <p class="note warn">ถ้าใช้ PM2 หลังแก้ backend ให้สั่ง <code>pm2 restart ecosystem.config.js</code> เพื่อโหลดโค้ดล่าสุด</p>
     </section>
   </main>
 </body>

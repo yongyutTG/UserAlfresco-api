@@ -269,7 +269,67 @@ Authorization: Bearer ACCESS_TOKEN
 
 ---
 
-# 5. Logout
+# 5. User permissions
+
+## Endpoint
+
+```http
+GET /auth/permissions
+```
+
+## ใช้ทำอะไร
+
+ดูข้อมูลสิทธิ์/กลุ่มของ user ที่ login อยู่ โดยเพิ่มเป็น endpoint ใหม่และไม่เปลี่ยน behavior ของ `/auth/login`, `/auth/me`, `/auth/logout` เดิม
+
+## ต้องแนบ token ไหม
+
+ต้องแนบ
+
+```http
+Authorization: Bearer ACCESS_TOKEN
+```
+
+## Parameters
+
+ไม่มี
+
+## ตัวอย่าง Request
+
+```http
+GET http://localhost:3001/auth/permissions
+Authorization: Bearer ACCESS_TOKEN
+```
+
+## ตัวอย่าง Response
+
+```json
+{
+  "username": "Administrator",
+  "person": {
+    "id": "Administrator",
+    "displayName": "Administrator"
+  },
+  "groups": [
+    {
+      "id": "GROUP_ALFRESCO_ADMINISTRATORS",
+      "displayName": "ALFRESCO_ADMINISTRATORS",
+      "isRoot": false
+    }
+  ],
+  "authorities": ["GROUP_ALFRESCO_ADMINISTRATORS"],
+  "capabilities": {
+    "canLogin": true,
+    "canBrowseByUserPermission": true
+  },
+  "source": {
+    "person": "alfresco-rest-people",
+    "groups": "alfresco-rest-people-groups"
+  }
+}
+```
+
+หมายเหตุ: ถ้า Alfresco ไม่เปิด endpoint groups หรือ user ไม่มีสิทธิ์เรียกดู ค่า `groups` จะเป็น array ว่าง และ `source.groups` จะเป็น `unavailable`
+# 6. Logout
 
 ## Endpoint
 
@@ -1111,6 +1171,7 @@ Content-Type: application/json
 | `GET` | `/health` | ไม่ต้อง | ไม่มี | ตรวจ server |
 | `POST` | `/auth/login` | ไม่ต้อง | JSON body | login ขอ accessToken |
 | `GET` | `/auth/me` | ต้อง | Header Bearer | ดู session ปัจจุบัน |
+| `GET` | `/auth/permissions` | ต้อง | Header Bearer | ดูสิทธิ์/กลุ่มของ user ปัจจุบัน |
 | `POST` | `/auth/logout` | ต้อง | Header Bearer | logout token |
 | `GET` | `/user-api/alfresco/folders` | ต้อง | Query string | ดู folder |
 | `GET` | `/user-api/alfresco/folders/tree` | ต้อง | Query string | ดู folder tree หลายชั้น |
@@ -1281,3 +1342,5 @@ Content-Type: application/json
 ```
 
 เพราะปลอดภัยและจัดการง่ายกว่าการส่ง password ทุก request หรือให้ browser ยิง Alfresco ตรงด้วย Basic Auth
+
+

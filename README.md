@@ -135,6 +135,16 @@ GET /auth/me
 Authorization: Bearer <accessToken>
 ```
 
+
+### User permissions
+
+```http
+GET /auth/permissions
+Authorization: Bearer <accessToken>
+```
+
+ใช้ดูข้อมูลสิทธิ์ของ user ที่ login อยู่โดยไม่กระทบ endpoint เดิม Response จะคืน `username`, `person`, `groups`, `authorities`, `capabilities` และ `source` ถ้า Alfresco endpoint สำหรับ groups ไม่พร้อมใช้งาน ค่า `groups` จะเป็น array ว่างและ `source.groups` จะเป็น `unavailable`
+
 ### Logout
 
 ```http
@@ -273,6 +283,7 @@ Action ที่เก็บ:
 - ถ้าใช้งานจริงควรเปิดผ่าน HTTPS
 - ถ้ามีหลาย server ควรเปลี่ยนจาก memory session เป็น Redis/session store
 - permission ที่ได้จะขึ้นกับ Alfresco user ที่ login
+
 
 
 

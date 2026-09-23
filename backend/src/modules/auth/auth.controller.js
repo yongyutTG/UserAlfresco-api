@@ -64,6 +64,27 @@ function me(req, res) {
   });
 }
 
+async function permissions(req, res) {
+  try {
+    const session = authService.getCurrentSession(req.userSessionToken);
+    const result = await authService.getCurrentUserPermissions(session);
+
+    audit(req, "VIEW_USER_PERMISSIONS", {
+      username: req.alfrescoUsername,
+      message: `Get user permissions success: ${result.groups.length} group(s)`,
+    });
+
+    res.json(result);
+  } catch (err) {
+    audit(req, "VIEW_USER_PERMISSIONS", {
+      username: req.alfrescoUsername,
+      status: "FAILED",
+      message: err.message,
+    });
+    handleError(res, "Cannot get Alfresco user permissions", err);
+  }
+}
+
 function logout(req, res) {
   audit(req, "LOGOUT", {
     message: "Logout success",
@@ -77,4 +98,6 @@ module.exports = {
   login,
   logout,
   me,
+  permissions,
 };
+

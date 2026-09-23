@@ -14,6 +14,8 @@ const loginRateLimiter = createRateLimiter({
 //ฟังชันจัดการ route สำหรับการเข้าสู่ระบบ, ตรวจสอบข้อมูลผู้ใช้ และออกจากระบบ
 router.post("/login", loginRateLimiter, authController.login);
 router.get("/me", requireUserSession, authController.me);
+router.get("/permissions", requireUserSession, authController.permissions);
 router.post("/logout", requireUserSession, authController.logout);
 
 module.exports = router;
+

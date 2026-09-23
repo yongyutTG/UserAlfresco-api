@@ -23,13 +23,19 @@ function getCurrentSession(token) {
   return authSession.getUserSession(token);
 }
 
+async function getCurrentUserPermissions(session) {
+  return authRepo.getCurrentUserPermissions(session.username, session.headers);
+}
+
 function logout(token) {
   authSession.deleteUserSession(token);
 }
 
 module.exports = {
   getCurrentSession,
+  getCurrentUserPermissions,
   login,
   logout,
 };
+
 

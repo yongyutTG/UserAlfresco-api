@@ -2,7 +2,6 @@
 .env.*
 !.env.example
 node_modules/
-*.log
 server.out.log
 server.err.log
 .vscode/

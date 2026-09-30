@@ -17,6 +17,24 @@ function getSearchPaging(options = {}) {
   };
 }
 
+function getDocumentSortClause(options = {}) {
+  const sortBy = String(options.sortBy || options.sortField || "").trim().toLowerCase();
+  const directionValue = String(options.sortDirection || options.order || "").trim().toLowerCase();
+  const direction = directionValue === "asc" ? "ASC" : directionValue === "desc" ? "DESC" : null;
+
+  if (!sortBy || !direction) return "";
+
+  const sortFieldMap = {
+    name: "cmis:name",
+    filename: "cmis:name",
+    created: "cmis:creationDate",
+    creationdate: "cmis:creationDate",
+  };
+  const field = sortFieldMap[sortBy];
+
+  return field ? ` ORDER BY ${field} ${direction}` : "";
+}
+
 function normalizeRepositoryPath(repositoryPath) {
   if (!repositoryPath) return null;
   return String(repositoryPath).replace(/^\/Company Home(?=\/|$)/, "") || "/";
@@ -107,6 +125,23 @@ function normalizeDocumentName(name) {
   }
 
   return normalizedName;
+}
+
+function normalizeUploadedFile(file = {}) {
+  const buffer = Buffer.isBuffer(file.buffer) ? file.buffer : null;
+  const name = normalizeDocumentName(file.name || file.fileName);
+  const mimeType = String(file.mimeType || "application/octet-stream").trim() || "application/octet-stream";
+
+  if (!buffer || buffer.length === 0) {
+    throw createBadRequest("Missing file content");
+  }
+
+  return {
+    buffer,
+    name,
+    mimeType,
+    size: buffer.length,
+  };
 }
 
 //ฟังชันตรวจสอบสถานะการเชื่อมต่อกับ Alfresco
@@ -225,7 +260,7 @@ async function listFolderTree(folderPath, headers, options = {}) {
 async function queryDocumentsInTree(folderPath, headers, options = {}) {
   const folder = await alfrescoRepo.getObjectByPath(folderPath, headers);
   const { maxItems, skipCount } = getListPaging(options);
-  const query = `SELECT * FROM cmis:document WHERE IN_TREE('${escapeCmisString(folder.id)}')`;
+  const query = `SELECT * FROM cmis:document WHERE IN_TREE('${escapeCmisString(folder.id)}')${getDocumentSortClause(options)}`;
   const data = await alfrescoRepo.queryDocuments(query, headers, { maxItems, skipCount });
   const files = (data.results || []).map((item) => mapCmisObject(item));
 
@@ -254,7 +289,7 @@ async function searchDocumentsInTree(folderPath, searchText, headers, options = 
     "SELECT * FROM cmis:document",
     `WHERE IN_TREE('${escapeCmisString(folder.id)}')`,
     `AND cmis:name LIKE '%${escapeCmisLike(normalizedSearchText)}%'`,
-  ].join(" ");
+  ].join(" ") + getDocumentSortClause(options);
   //ฟังชันเรียกใช้ alfrescoRepo.queryDocuments
   const data = await alfrescoRepo.queryDocuments(query, headers, { searchAllVersions: false, maxItems, skipCount });
   const files = (data.results || []).map((item) => mapCmisObject(item));
@@ -290,7 +325,7 @@ async function findDocumentByExactNameInTree(folderPath, exactName, headers, opt
     "SELECT * FROM cmis:document",
     `WHERE IN_TREE('${escapeCmisString(folder.id)}')`,
     `AND (${exactNameFilter})`,
-  ].join(" ");
+  ].join(" ") + getDocumentSortClause(options);
 
   const data = await alfrescoRepo.queryDocuments(query, headers, { searchAllVersions: false, maxItems, skipCount });
   const files = (data.results || []).map((item) => mapCmisObject(item));
@@ -400,6 +435,50 @@ async function updateDocument(id, payload = {}, headers) {
     document: updatedObject,
   };
 }
+//ฟังชันอัปโหลดเอกสารใหม่เข้า folder ที่ระบุ
+async function createDocument(folderPath, file, headers) {
+  const targetFolderPath = folderPath || "/Sites/tg-saving/documentLibrary";
+  const uploadedFile = normalizeUploadedFile(file);
+  const createdObject = await alfrescoRepo.createDocument(targetFolderPath, uploadedFile, headers);
+
+  return {
+    created: true,
+    path: targetFolderPath,
+    fileName: uploadedFile.name,
+    size: uploadedFile.size,
+    document: createdObject,
+  };
+}
+//ฟังชันลบเอกสารตาม id
+async function deleteDocument(id, headers) {
+  if (!id || id === "DOCUMENT_ID") {
+    throw createBadRequest("Missing real document id");
+  }
+
+  await alfrescoRepo.deleteDocument(id, headers);
+
+  return {
+    id,
+    deleted: true,
+  };
+}
+//ฟังชันแทนที่ content ของเอกสารเดิม
+async function replaceDocumentContent(id, file, headers) {
+  if (!id || id === "DOCUMENT_ID") {
+    throw createBadRequest("Missing real document id");
+  }
+
+  const uploadedFile = normalizeUploadedFile(file);
+  const updatedObject = await alfrescoRepo.setDocumentContentStream(id, uploadedFile, headers);
+
+  return {
+    id,
+    updatedContent: true,
+    fileName: uploadedFile.name,
+    size: uploadedFile.size,
+    document: updatedObject,
+  };
+}
 //ฟังชันสตรีมเนื้อหาเอกสารจาก Alfresco
 async function streamDocumentContent(res, id, name, headers) {
   if (!id || id === "DOCUMENT_ID") {
@@ -415,6 +494,8 @@ async function streamDocumentContent(res, id, name, headers) {
 }
 
 module.exports = {
+  createDocument,
+  deleteDocument,
   getHealth,
   findDocumentByExactNameInTree,
   getDocumentLocation,
@@ -424,6 +505,8 @@ module.exports = {
   queryDocumentsInTree,
   searchDocuments,
   searchDocumentsInTree,
+  replaceDocumentContent,
   streamDocumentContent,
   updateDocument,
 };
+

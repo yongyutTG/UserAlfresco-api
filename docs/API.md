@@ -570,6 +570,22 @@ GET /user-api/alfresco/documents
 - `allowRename: true` = user มีสิทธิ์แก้ไขชื่อไฟล์
 - `allowRename: false` = user ไม่มีสิทธิ์แก้ไขชื่อไฟล์ และ frontend ควรซ่อนไอคอนแก้ไขชื่อ
 
+และมี field `permissions` สำหรับแสดงสิทธิ์รายไฟล์ให้ผู้ใช้เห็น:
+
+```json
+{
+  "permissions": {
+    "canView": true,
+    "canRename": true,
+    "canEditProperties": true,
+    "canDelete": false,
+    "canUpdateContent": false
+  }
+}
+```
+
+ถ้า `canRename`, `canUpdateContent`, หรือ `canDelete` เป็น `true` สามารถแสดงว่า `แก้ไขได้`; ถ้าไม่มีสิทธิ์เหล่านี้ให้แสดงว่า `ดูอย่างเดียว`
+
 ## ต้องแนบ token ไหม
 
 ต้องแนบ
@@ -586,11 +602,13 @@ Authorization: Bearer ACCESS_TOKEN
 | `path` | Query string | ไม่จำเป็น | ใช้แทน `folderPath` ได้ | `/Sites/tg-saving/documentLibrary/การเงิน` | alias ของ `folderPath` |
 | `maxItems` | Query string | ไม่จำเป็น | `100` | `17` | จำนวนรายการต่อหน้า |
 | `skipCount` | Query string | ไม่จำเป็น | `0` | `0`, `100`, `200` | จำนวนรายการที่ข้าม ใช้ทำ pagination |
+| `sortBy` | Query string | ไม่จำเป็น | ไม่เรียงเพิ่ม | `name`, `created` | field ที่ต้องการเรียง เช่น ชื่อไฟล์หรือวันที่สร้าง |
+| `sortDirection` | Query string | ไม่จำเป็น | ไม่เรียงเพิ่ม | `asc`, `desc` | ทิศทางการเรียง |
 
 ## ตัวอย่าง List เอกสารทั้งหมดใน documentLibrary
 
 ```http
-GET http://localhost:3001/user-api/alfresco/documents?folderPath=/Sites/tg-saving/documentLibrary&maxItems=17&skipCount=0
+GET http://localhost:3001/user-api/alfresco/documents?folderPath=/Sites/tg-saving/documentLibrary&maxItems=17&skipCount=0&sortBy=created&sortDirection=desc
 Authorization: Bearer ACCESS_TOKEN
 ```
 
@@ -648,7 +666,7 @@ GET /user-api/alfresco/documents/search
 
 ค้นหาเอกสารใต้ folder ที่ระบุ โดยค้นรวมใน folder ย่อยด้วย `IN_TREE`
 
-ผลลัพธ์แต่ละไฟล์จะมี field `allowRename` เช่นเดียวกับ list documents เพื่อให้ frontend แสดง/ซ่อนไอคอนแก้ไขชื่อไฟล์ตามสิทธิ์
+ผลลัพธ์แต่ละไฟล์จะมี field `allowRename` และ `permissions` เช่นเดียวกับ list documents เพื่อให้ frontend แสดง/ซ่อนไอคอนแก้ไขชื่อไฟล์และ badge สิทธิ์ตามสิทธิ์
 
 ## ต้องแนบ token ไหม
 
@@ -671,6 +689,8 @@ Authorization: Bearer ACCESS_TOKEN
 | `fileName` | Query string | ไม่จำเป็น | ว่าง | `23017_116969` | alias ของ `exactName` |
 | `maxItems` | Query string | ไม่จำเป็น | `100` | `17` | จำนวนรายการต่อหน้า ใช้ config เดิม |
 | `skipCount` | Query string | ไม่จำเป็น | `0` | `0`, `100`, `200` | จำนวนรายการที่ข้าม ใช้ทำ pagination |
+| `sortBy` | Query string | ไม่จำเป็น | ไม่เรียงเพิ่ม | `name`, `created` | field ที่ต้องการเรียง เช่น ชื่อไฟล์หรือวันที่สร้าง |
+| `sortDirection` | Query string | ไม่จำเป็น | ไม่เรียงเพิ่ม | `asc`, `desc` | ทิศทางการเรียง |
 
 หมายเหตุ: endpoint นี้ต้องส่งอย่างน้อย `q` หรือ `exactName` ถ้าไม่ส่งจะได้ HTTP `400`
 
@@ -986,7 +1006,79 @@ propertyValue[0]=new-file-name.pdf
 
 ---
 
-# 11. เปิด / ดาวน์โหลดไฟล์เอกสาร
+# 11. อัปโหลด / ลบ / แทนที่ไฟล์
+
+ทุกเส้นต้องแนบ:
+
+```http
+Authorization: Bearer ACCESS_TOKEN
+```
+
+สิทธิ์จริงอิง Alfresco ถ้า user ไม่มีสิทธิ์สร้าง ลบ หรือแก้ไข content จะได้ error จาก Alfresco กลับมา
+
+## Upload file
+
+ใช้สร้างไฟล์ใหม่ใน folder ที่ระบุ ส่ง body เป็น binary file ไม่ใช่ JSON
+
+```http
+POST /user-api/alfresco/documents?folderPath=/Sites/tg-saving/documentLibrary/การเงิน&name=file.pdf
+Authorization: Bearer ACCESS_TOKEN
+Content-Type: application/pdf
+
+<binary file body>
+```
+
+Postman: เลือก `Body -> binary` แล้วเลือกไฟล์ จากนั้นใส่ `name` และ `folderPath` ใน query string
+
+## Delete file
+
+แนะนำแบบ query string เพื่อรองรับ id เต็มของ Alfresco เช่น `uuid;1.0`
+
+```http
+DELETE /user-api/alfresco/documents?id=DOCUMENT_ID&name=file.pdf
+Authorization: Bearer ACCESS_TOKEN
+```
+
+route แบบ path parameter ที่รองรับ:
+
+```http
+DELETE /user-api/alfresco/documents/{id}
+Authorization: Bearer ACCESS_TOKEN
+```
+
+## Replace file content
+
+ใช้แทนที่ binary content ของเอกสารเดิม ส่ง body เป็น binary file ไม่ใช่ JSON
+
+```http
+PUT /user-api/alfresco/documents/content?id=DOCUMENT_ID&name=file.pdf
+Authorization: Bearer ACCESS_TOKEN
+Content-Type: application/pdf
+
+<binary file body>
+```
+
+route แบบ path parameter ที่รองรับ:
+
+```http
+PUT /user-api/alfresco/documents/{id}/content?name=file.pdf
+Authorization: Bearer ACCESS_TOKEN
+Content-Type: application/pdf
+
+<binary file body>
+```
+
+## ข้างใน backend ไปเรียก CMIS อะไร
+
+```text
+POST createDocument       -> cmisaction=createDocument
+DELETE document           -> cmisaction=delete
+PUT document content      -> cmisaction=setContentStream overwriteFlag=true
+```
+
+---
+
+# 12. เปิด / ดาวน์โหลดไฟล์เอกสาร
 
 ## Endpoint
 
@@ -1342,5 +1434,6 @@ Content-Type: application/json
 ```
 
 เพราะปลอดภัยและจัดการง่ายกว่าการส่ง password ทุก request หรือให้ browser ยิง Alfresco ตรงด้วย Basic Auth
+
 
 

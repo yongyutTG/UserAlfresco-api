@@ -42,6 +42,16 @@ function mapCmisObject(item, contentRoutePrefix = "/user-api/alfresco") {
   const name = getProp(props, "cmis:name");
   const id = getProp(props, "cmis:objectId");
   const allowRename = type === "cmis:document" && hasAllowableAction(item, "canUpdateProperties");
+  const permissions = {
+    canView: type === "cmis:document",
+    canRename: allowRename,
+    canEditProperties: type === "cmis:document" && hasAllowableAction(item, "canUpdateProperties"),
+    canDelete: type === "cmis:document" && hasAllowableAction(item, "canDeleteObject"),
+    canUpdateContent: type === "cmis:document" && (
+      hasAllowableAction(item, "canSetContentStream") ||
+      hasAllowableAction(item, "canDeleteContentStream")
+    ),
+  };
 
   return {
     id,
@@ -60,6 +70,7 @@ function mapCmisObject(item, contentRoutePrefix = "/user-api/alfresco") {
     title: getProp(props, "cm:title"),
     description: getProp(props, "cm:description") || getProp(props, "cmis:description"),
     allowRename,
+    permissions,
     downloadUrl: type === "cmis:document"
       ? `${contentRoutePrefix}/documents/${encodeURIComponent(id)}/content?name=${encodeURIComponent(name || "download")}`
       : null,

@@ -175,11 +175,13 @@ Authorization: Bearer <accessToken>
 ### List documents
 
 ```http
-GET /user-api/alfresco/documents?folderPath=/Sites/tg-saving/documentLibrary/การเงิน&maxItems=20&skipCount=0
+GET /user-api/alfresco/documents?folderPath=/Sites/tg-saving/documentLibrary/การเงิน&maxItems=20&skipCount=0&sortBy=created&sortDirection=desc
 Authorization: Bearer <accessToken>
 ```
 
-รายการเอกสารจะมี field `allowRename` จาก CMIS `canUpdateProperties` เพื่อให้ frontend แสดง/ซ่อนไอคอนแก้ไขชื่อไฟล์ตามสิทธิ์ของ user
+รองรับการเรียงด้วย `sortBy=name|created` และ `sortDirection=asc|desc` เช่นดูวันที่สร้างล่าสุดให้ส่ง `sortBy=created&sortDirection=desc`
+
+รายการเอกสารจะมี field `allowRename` จาก CMIS `canUpdateProperties` เพื่อให้ frontend แสดง/ซ่อนไอคอนแก้ไขชื่อไฟล์ตามสิทธิ์ของ user และมี `permissions` สำหรับแสดงสถานะสิทธิ์ให้ผู้ใช้เห็น เช่น `canRename`, `canUpdateContent`, `canDelete`
 
 ### Search documents
 
@@ -188,7 +190,7 @@ GET /user-api/alfresco/documents/search?folderPath=/Sites/tg-saving/documentLibr
 Authorization: Bearer <accessToken>
 ```
 
-ผลค้นหาจะมี field `allowRename` เช่นเดียวกับ list documents
+ผลค้นหาจะมี field `allowRename` และ `permissions` เช่นเดียวกับ list documents
 
 ค้นหาแบบชื่อไฟล์ตรงตัว:
 
@@ -225,6 +227,37 @@ Content-Type: application/json
 ```
 
 แนะนำให้ใช้รูปแบบ query string `?id=DOCUMENT_ID` เพื่อรองรับ id เต็มของ Alfresco เช่น `uuid;1.0` และเลี่ยงปัญหา route path กับอักขระพิเศษ
+
+### Upload file
+
+ส่งไฟล์แบบ `Body -> binary` ใน Postman และส่งชื่อไฟล์ผ่าน `name`
+
+```http
+POST /user-api/alfresco/documents?folderPath=/Sites/tg-saving/documentLibrary/การเงิน&name=file.pdf
+Authorization: Bearer <accessToken>
+Content-Type: application/pdf
+```
+
+### Delete file
+
+```http
+DELETE /user-api/alfresco/documents?id=DOCUMENT_ID&name=file.pdf
+DELETE /user-api/alfresco/documents/:id
+Authorization: Bearer <accessToken>
+```
+
+แนะนำแบบ query string `?id=DOCUMENT_ID` เพื่อรองรับ id เต็มของ Alfresco เช่น `uuid;1.0`
+
+### Replace file content
+
+ส่งไฟล์ใหม่แบบ `Body -> binary`
+
+```http
+PUT /user-api/alfresco/documents/content?id=DOCUMENT_ID&name=file.pdf
+PUT /user-api/alfresco/documents/:id/content?name=file.pdf
+Authorization: Bearer <accessToken>
+Content-Type: application/pdf
+```
 
 ### Open file
 
@@ -270,6 +303,9 @@ Action ที่เก็บ:
 - `OPEN_FILE`
 - `DOWNLOAD_FILE`
 - `RENAME_FILE`
+- `UPLOAD_FILE`
+- `DELETE_FILE`
+- `REPLACE_FILE_CONTENT`
 
 หมายเหตุ: `LOGOUT` จะเกิดเฉพาะกรณี client เรียก `POST /auth/logout` พร้อม Bearer token ก่อนล้าง token ฝั่ง browser ถ้าปิด browser หรือปิด tab เฉย ๆ backend จะไม่รู้เหตุการณ์ logout
 
@@ -283,6 +319,7 @@ Action ที่เก็บ:
 - ถ้าใช้งานจริงควรเปิดผ่าน HTTPS
 - ถ้ามีหลาย server ควรเปลี่ยนจาก memory session เป็น Redis/session store
 - permission ที่ได้จะขึ้นกับ Alfresco user ที่ login
+
 
 
 

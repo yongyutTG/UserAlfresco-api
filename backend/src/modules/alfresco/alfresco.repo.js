@@ -1,5 +1,6 @@
 const axios = require("axios");
 const path = require("path");
+const { Blob } = require("buffer");
 const config = require("../../config/env");
 const { cmisUrlForPath, mapCmisObject } = require("../../utils/cmis");
 
@@ -76,6 +77,50 @@ async function updateDocumentProperties(objectId, properties, headers) {
 
   return getObjectById(objectId, headers);
 }
+//ฟังชันสร้างเอกสารใหม่ใน folder ผ่าน CMIS Browser Binding
+async function createDocument(folderPath, file, headers) {
+  const form = new FormData();
+  form.set("cmisaction", "createDocument");
+  form.set("propertyId[0]", "cmis:objectTypeId");
+  form.set("propertyValue[0]", "cmis:document");
+  form.set("propertyId[1]", "cmis:name");
+  form.set("propertyValue[1]", file.name);
+  form.set("content", new Blob([file.buffer], { type: file.mimeType }), file.name);
+
+  const result = await alfrescoHttp.post(cmisUrlForPath(folderPath), form, {
+    headers,
+  });
+
+  return mapCmisObject(result.data);
+}
+//ฟังชันลบเอกสารผ่าน CMIS Browser Binding
+async function deleteDocument(objectId, headers) {
+  const form = new URLSearchParams();
+  form.set("cmisaction", "delete");
+  form.set("objectId", objectId);
+  form.set("allVersions", "true");
+
+  await alfrescoHttp.post(`${config.alfrescoCmis}/root`, form, {
+    headers: {
+      ...headers,
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
+  });
+}
+//ฟังชันแทนที่ content ของเอกสารเดิมผ่าน CMIS Browser Binding
+async function setDocumentContentStream(objectId, file, headers) {
+  const form = new FormData();
+  form.set("cmisaction", "setContentStream");
+  form.set("objectId", objectId);
+  form.set("overwriteFlag", "true");
+  form.set("content", new Blob([file.buffer], { type: file.mimeType }), file.name);
+
+  const result = await alfrescoHttp.post(`${config.alfrescoCmis}/root`, form, {
+    headers,
+  });
+
+  return mapCmisObject(result.data);
+}
 //ฟังชันดึง parent folder ของเอกสารจาก Alfresco ตาม objectId
 async function getObjectParents(objectId, headers) {
   const result = await alfrescoHttp.get(`${config.alfrescoCmis}/root`, {
@@ -134,6 +179,8 @@ function safeFileName(name) {
 }
 
 module.exports = {
+  createDocument,
+  deleteDocument,
   getChildrenByPath,
   getDocumentContentStream,
   getNodePathByObjectId,
@@ -143,5 +190,6 @@ module.exports = {
   getServerInfo,
   queryDocuments,
   safeFileName,
+  setDocumentContentStream,
   updateDocumentProperties,
 };

@@ -69,6 +69,11 @@ function mapCmisObject(item, contentRoutePrefix = "/user-api/alfresco") {
     lastModificationDate: getProp(props, "cmis:lastModificationDate"),
     title: getProp(props, "cm:title"),
     description: getProp(props, "cm:description") || getProp(props, "cmis:description"),
+    versionLabel: getProp(props, "cmis:versionLabel"),
+    versionSeriesId: getProp(props, "cmis:versionSeriesId"),
+    isLatestVersion: getProp(props, "cmis:isLatestVersion"),
+    isMajorVersion: getProp(props, "cmis:isMajorVersion"),
+    checkinComment: getProp(props, "cmis:checkinComment"),
     allowRename,
     permissions,
     downloadUrl: type === "cmis:document"

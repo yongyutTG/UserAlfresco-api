@@ -13,12 +13,14 @@ router.post("/documents", rawFileBody, alfrescoController.createDocument);
 router.get("/documents", alfrescoController.listDocuments);
 router.get("/documents/search", alfrescoController.searchDocuments);
 router.get("/documents/location", alfrescoController.getDocumentLocation);
+router.get("/documents/versions", alfrescoController.getDocumentVersions);
 router.patch("/documents", alfrescoController.updateDocument);
 router.delete("/documents", alfrescoController.deleteDocument);
 router.put("/documents/content", rawFileBody, alfrescoController.replaceDocumentContent);
 router.patch("/documents/:id", alfrescoController.updateDocument);
 router.delete("/documents/:id", alfrescoController.deleteDocument);
 router.get("/documents/:id/location", alfrescoController.getDocumentLocation);
+router.get("/documents/:id/versions", alfrescoController.getDocumentVersions);
 router.get("/documents/:id/content", alfrescoController.streamDocumentContent);
 router.put("/documents/:id/content", rawFileBody, alfrescoController.replaceDocumentContent);
 

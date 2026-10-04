@@ -155,6 +155,50 @@ PATCH /user-api/alfresco/documents/:id
 
 รายการเอกสารจาก list/search map field `allowRename` จาก CMIS allowable action `canUpdateProperties` เพื่อให้ frontend ซ่อนไอคอนแก้ไขชื่อไฟล์เมื่อ user ไม่มีสิทธิ์
 
+### Document versions
+
+```text
+GET /user-api/alfresco/documents/versions?id=DOCUMENT_ID
+GET /user-api/alfresco/documents/:id/versions
+  -> apiRateLimiter
+  -> requireUserSession
+  -> alfresco.controller.getDocumentVersions()
+  -> alfresco.service.getDocumentVersions()
+  -> alfresco.repo.getDocumentVersions()
+  -> Alfresco CMIS cmisselector=versions
+```
+
+เส้นนี้ใช้ใน modal รายละเอียดไฟล์แท็บ `ประวัติเวอร์ชัน` เพื่อแสดง `versionLabel`, วันที่แก้ไข, ผู้แก้ไข, ขนาด, comment และใช้ `objectId` ของแต่ละเวอร์ชันสำหรับเปิด/ดาวน์โหลด
+
+### Replace file content
+
+```text
+PUT /user-api/alfresco/documents/content?id=DOCUMENT_ID&name=file.pdf
+  -> apiRateLimiter
+  -> requireUserSession
+  -> alfresco.controller.replaceDocumentContent()
+  -> alfresco.service.replaceDocumentContent()
+  -> alfresco.repo.setDocumentContentStream()
+  -> Alfresco legacy upload webscript /alfresco/service/api/upload พร้อม updatenoderef
+```
+
+เส้นนี้แทนที่เฉพาะเนื้อหาไฟล์และสร้างเวอร์ชันใหม่ใน Alfresco ไม่เปลี่ยน `cmis:name` ถ้าต้องเปลี่ยนชื่อไฟล์ให้เรียก `PATCH /user-api/alfresco/documents?id=...` แยกต่างหาก
+
+### Delete file
+
+```text
+DELETE /user-api/alfresco/documents?id=DOCUMENT_ID
+DELETE /user-api/alfresco/documents/:id
+  -> apiRateLimiter
+  -> requireUserSession
+  -> alfresco.controller.deleteDocument()
+  -> alfresco.service.deleteDocument()
+  -> alfresco.repo.deleteDocument()
+  -> Alfresco CMIS cmisaction=delete
+```
+
+แนะนำให้ frontend ใช้ route แบบ query string เพื่อส่ง id เต็ม เช่น `uuid;1.0` ได้ปลอดภัยกว่า path param
+
 ### Logout และ audit log
 
 ```text
@@ -172,7 +216,7 @@ POST /auth/logout
 backend/logs/audit.log
 ```
 
-ตัวอย่าง action ที่ถูกบันทึก: `LOGIN`, `LOGOUT`, `LIST_FOLDERS`, `LIST_FOLDER_TREE`, `LIST_DOCUMENTS`, `SEARCH_DOCUMENTS`, `VIEW_FILE_DETAIL`, `OPEN_FILE`, `DOWNLOAD_FILE`, `RENAME_FILE`
+ตัวอย่าง action ที่ถูกบันทึก: `LOGIN`, `LOGOUT`, `LIST_FOLDERS`, `LIST_FOLDER_TREE`, `LIST_DOCUMENTS`, `SEARCH_DOCUMENTS`, `VIEW_FILE_DETAIL`, `VIEW_FILE_VERSIONS`, `OPEN_FILE`, `DOWNLOAD_FILE`, `RENAME_FILE`, `UPLOAD_FILE`, `DELETE_FILE`, `REPLACE_FILE_CONTENT`
 
 ### Open file
 

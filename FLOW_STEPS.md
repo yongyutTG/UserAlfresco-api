@@ -322,7 +322,90 @@ alfresco.route.js
 
 ---
 
-## Flow 11: Open File
+## Flow 11: Document Version History
+
+```http
+GET /user-api/alfresco/documents/versions?id=DOCUMENT_ID
+Authorization: Bearer <accessToken>
+```
+
+route สำรองสำหรับ compatibility:
+
+```http
+GET /user-api/alfresco/documents/:id/versions
+Authorization: Bearer <accessToken>
+```
+
+ลำดับไฟล์:
+
+```text
+alfresco.route.js
+  -> alfrescoController.getDocumentVersions()
+  -> auditLogger.audit(req, "VIEW_FILE_VERSIONS")
+  -> alfrescoService.getDocumentVersions()
+  -> alfrescoRepo.getDocumentVersions()
+  -> Alfresco CMIS cmisselector=versions
+```
+
+response ใช้ใน modal รายละเอียดไฟล์แท็บ `ประวัติเวอร์ชัน` โดยแสดงเวอร์ชัน วันที่แก้ไข ผู้แก้ไข ขนาด comment และปุ่มเปิด/ดาวน์โหลดเวอร์ชันนั้น
+
+---
+
+## Flow 12: Replace File Content
+
+```http
+PUT /user-api/alfresco/documents/content?id=DOCUMENT_ID&name=file.pdf
+Authorization: Bearer <accessToken>
+Content-Type: application/pdf
+
+<raw binary file body>
+```
+
+ลำดับไฟล์:
+
+```text
+alfresco.route.js
+  -> alfrescoController.replaceDocumentContent()
+  -> auditLogger.audit(req, "REPLACE_FILE_CONTENT")
+  -> alfrescoService.replaceDocumentContent()
+  -> alfrescoRepo.setDocumentContentStream()
+  -> Alfresco legacy upload webscript /alfresco/service/api/upload พร้อม updatenoderef
+```
+
+endpoint นี้แทนที่เฉพาะเนื้อหาไฟล์และสร้างเวอร์ชันใหม่ ไม่เปลี่ยนชื่อไฟล์ ถ้าต้องแก้ชื่อไฟล์ให้ใช้ Flow 10 แยก
+
+---
+
+## Flow 13: Delete File
+
+```http
+DELETE /user-api/alfresco/documents?id=DOCUMENT_ID
+Authorization: Bearer <accessToken>
+```
+
+route สำรองสำหรับ compatibility:
+
+```http
+DELETE /user-api/alfresco/documents/:id
+Authorization: Bearer <accessToken>
+```
+
+ลำดับไฟล์:
+
+```text
+alfresco.route.js
+  -> alfrescoController.deleteDocument()
+  -> auditLogger.audit(req, "DELETE_FILE")
+  -> alfrescoService.deleteDocument()
+  -> alfrescoRepo.deleteDocument()
+  -> Alfresco CMIS cmisaction=delete
+```
+
+แนะนำให้ frontend ใช้ query string `?id=DOCUMENT_ID` เพื่อไม่ให้ `uuid;1.0` ชนกับ path routing
+
+---
+
+## Flow 14: Open File
 
 ```http
 GET /user-api/alfresco/documents/:id/content?name=file.pdf
@@ -351,7 +434,7 @@ alfresco.route.js
 
 ---
 
-## Flow 12: Logout
+## Flow 15: Logout
 
 ```http
 POST /auth/logout
@@ -373,7 +456,7 @@ auth.route.js
 
 ---
 
-## Flow 13: Audit Log
+## Flow 16: Audit Log
 
 ไฟล์หลัก:
 
@@ -403,7 +486,11 @@ LIST_FOLDER_TREE
 LIST_DOCUMENTS
 SEARCH_DOCUMENTS
 VIEW_FILE_DETAIL
+VIEW_FILE_VERSIONS
 OPEN_FILE
 DOWNLOAD_FILE
 RENAME_FILE
+UPLOAD_FILE
+DELETE_FILE
+REPLACE_FILE_CONTENT
 ```

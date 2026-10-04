@@ -152,6 +152,29 @@ async function getDocumentLocation(req, res) {
     handleError(res, "ไม่สามารถดึงตำแหน่งไฟล์จาก Alfresco ได้", err);
   }
 }
+//ฟังชันดึงประวัติเวอร์ชันของเอกสาร
+async function getDocumentVersions(req, res) {
+  const documentId = req.params.id || req.query.id;
+  try {
+    const result = await alfrescoService.getDocumentVersions(documentId, req.alfrescoAuthHeaders);
+    audit(req, "VIEW_FILE_VERSIONS", {
+      documentId,
+      message: `Get document versions success: ${result.count} item(s)`,
+    });
+    res.json({
+      ...result,
+      username: req.alfrescoUsername,
+    });
+  } catch (err) {
+    audit(req, "VIEW_FILE_VERSIONS", {
+      documentId,
+      status: "FAILED",
+      message: err.message,
+      errorDetail: err.response?.data || null,
+    });
+    handleError(res, "ไม่สามารถดึงประวัติเวอร์ชันจาก Alfresco ได้", err);
+  }
+}
 //ฟังชันแก้ไขข้อมูลเอกสาร ปัจจุบันรองรับการเปลี่ยนชื่อไฟล์ด้วย field name
 async function updateDocument(req, res) {
   const documentId = req.params.id || req.query.id;
@@ -246,6 +269,7 @@ async function replaceDocumentContent(req, res) {
       fileName: file.name,
       status: "FAILED",
       message: err.message,
+      errorDetail: err.response?.data || null,
     });
     handleError(res, "ไม่สามารถแทนที่เนื้อหาเอกสารใน Alfresco ได้", err);
   }
@@ -276,6 +300,7 @@ module.exports = {
   deleteDocument,
   health,
   getDocumentLocation,
+  getDocumentVersions,
   listDocuments,
   listFolderTree,
   listFolders,

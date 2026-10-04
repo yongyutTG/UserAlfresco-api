@@ -107,19 +107,24 @@ async function deleteDocument(objectId, headers) {
     },
   });
 }
-//ฟังชันแทนที่ content ของเอกสารเดิมผ่าน CMIS Browser Binding
+//ฟังชันแทนที่ content ของเอกสารเดิมผ่าน legacy upload webscript
 async function setDocumentContentStream(objectId, file, headers) {
+  const nodeId = getNodeIdFromObjectId(objectId);
+  const nodeRef = `workspace://SpacesStore/${nodeId}`;
   const form = new FormData();
-  form.set("cmisaction", "setContentStream");
-  form.set("objectId", objectId);
-  form.set("overwriteFlag", "true");
-  form.set("content", new Blob([file.buffer], { type: file.mimeType }), file.name);
 
-  const result = await alfrescoHttp.post(`${config.alfrescoCmis}/root`, form, {
+  form.set("filedata", new Blob([file.buffer], { type: file.mimeType }), file.name);
+  form.set("filename", file.name);
+  form.set("updatenoderef", nodeRef);
+  form.set("updateNodeRef", nodeRef);
+  form.set("majorversion", "false");
+  form.set("overwrite", "true");
+
+  await alfrescoHttp.post(`${config.alfrescoHost}/alfresco/service/api/upload`, form, {
     headers,
   });
 
-  return mapCmisObject(result.data);
+  return getObjectById(objectId, headers);
 }
 //ฟังชันดึง parent folder ของเอกสารจาก Alfresco ตาม objectId
 async function getObjectParents(objectId, headers) {
@@ -137,6 +142,22 @@ async function getObjectParents(objectId, headers) {
     : result.data.objects || result.data.parents || [];
 
   return parents.map((item) => mapCmisObject(item));
+}
+//ฟังชันดึงประวัติเวอร์ชันของเอกสารผ่าน CMIS Browser Binding
+async function getDocumentVersions(objectId, headers) {
+  const result = await alfrescoHttp.get(`${config.alfrescoCmis}/root`, {
+    headers,
+    params: {
+      cmisselector: "versions",
+      objectId,
+      includeAllowableActions: true,
+    },
+  });
+  const versions = Array.isArray(result.data)
+    ? result.data
+    : result.data.objects || result.data.versions || [];
+
+  return versions.map((item) => mapCmisObject(item));
 }
 //ฟังชันแปลง CMIS objectId เป็น Alfresco nodeId สำหรับเรียก REST API
 function getNodeIdFromObjectId(objectId) {
@@ -183,6 +204,7 @@ module.exports = {
   deleteDocument,
   getChildrenByPath,
   getDocumentContentStream,
+  getDocumentVersions,
   getNodePathByObjectId,
   getObjectParents,
   getObjectById,

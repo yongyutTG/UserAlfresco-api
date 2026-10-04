@@ -1048,7 +1048,7 @@ Authorization: Bearer ACCESS_TOKEN
 
 ## Replace file content
 
-ใช้แทนที่ binary content ของเอกสารเดิม ส่ง body เป็น binary file ไม่ใช่ JSON
+ใช้แทนที่ binary content ของเอกสารเดิม/สร้าง version ใหม่ ส่ง body เป็น binary file ไม่ใช่ JSON และไม่เปลี่ยนชื่อเอกสารเดิม
 
 ```http
 PUT /user-api/alfresco/documents/content?id=DOCUMENT_ID&name=file.pdf
@@ -1068,17 +1068,81 @@ Content-Type: application/pdf
 <binary file body>
 ```
 
-## ข้างใน backend ไปเรียก CMIS อะไร
+## ข้างใน backend ไปเรียก Alfresco อะไร
 
 ```text
-POST createDocument       -> cmisaction=createDocument
-DELETE document           -> cmisaction=delete
-PUT document content      -> cmisaction=setContentStream overwriteFlag=true
+POST createDocument       -> CMIS cmisaction=createDocument
+DELETE document           -> CMIS cmisaction=delete
+PUT document content      -> legacy webscript POST /alfresco/service/api/upload พร้อม updatenoderef
 ```
+
+หมายเหตุ: Alfresco server นี้ไม่รองรับ REST v1 `/nodes/{id}/content` จึงใช้ legacy upload webscript เพื่อแทนที่ content ของ node เดิม
 
 ---
 
-# 12. เปิด / ดาวน์โหลดไฟล์เอกสาร
+# 12. ประวัติเวอร์ชันเอกสาร
+
+## Endpoint
+
+```http
+GET /user-api/alfresco/documents/versions?id=DOCUMENT_ID
+GET /user-api/alfresco/documents/{id}/versions
+```
+
+## ใช้ทำอะไร
+
+ดึง version history ของเอกสาร เช่น version label, วันที่แก้ไข, ผู้แก้ไข, ขนาดไฟล์, comment และ objectId ของแต่ละเวอร์ชันสำหรับเปิด/ดาวน์โหลด
+
+## ต้องแนบ token ไหม
+
+ต้องแนบ
+
+```http
+Authorization: Bearer ACCESS_TOKEN
+```
+
+## ตัวอย่าง Request
+
+```http
+GET http://localhost:3001/user-api/alfresco/documents/versions?id=d67ee77b-eeac-4832-a533-cc2fce26549a%3B1.0
+Authorization: Bearer ACCESS_TOKEN
+```
+
+## ตัวอย่าง Response
+
+```json
+{
+  "id": "d67ee77b-eeac-4832-a533-cc2fce26549a;1.0",
+  "count": 2,
+  "versions": [
+    {
+      "id": "d67ee77b-eeac-4832-a533-cc2fce26549a;2.0",
+      "name": "01940_02391-0.pdf",
+      "versionLabel": "2.0",
+      "lastModifiedBy": "admin",
+      "lastModificationDate": "2026-10-02T15:42:42.000Z",
+      "size": 123456,
+      "checkinComment": null,
+      "isLatestVersion": true,
+      "downloadUrl": "/user-api/alfresco/documents/d67ee77b-eeac-4832-a533-cc2fce26549a%3B2.0/content?name=01940_02391-0.pdf"
+    }
+  ],
+  "username": "Administrator"
+}
+```
+
+## ข้างใน backend ไปเรียก CMIS อะไร
+
+```http
+GET {ALFRESCO_HOST}/alfresco/api/-default-/public/cmis/versions/1.1/browser/root?cmisselector=versions&objectId={DOCUMENT_ID}&includeAllowableActions=true
+Authorization: Basic base64(username:password)
+```
+
+Audit log action: `VIEW_FILE_VERSIONS`
+
+---
+
+# 13. เปิด / ดาวน์โหลดไฟล์เอกสาร
 
 ## Endpoint
 
@@ -1167,7 +1231,7 @@ Content-Disposition: inline; filename="file.pdf"
 
 ---
 
-# 12. ตัวอย่าง Flow ใน Postman
+# 14. ตัวอย่าง Flow ใน Postman
 
 ## Step 1: Login
 
@@ -1253,9 +1317,37 @@ Content-Type: application/json
 }
 ```
 
+## Step 8: ดูประวัติเวอร์ชัน
+
+นำ `id` จาก response ไปใช้:
+
+```http
+GET http://localhost:3001/user-api/alfresco/documents/versions?id={id}
+Authorization: Bearer {{alfresco_access_token}}
+```
+
+## Step 9: แทนที่เนื้อหาไฟล์
+
+ส่ง raw binary body ของไฟล์ใหม่ และส่งชื่อไฟล์ผ่าน query string:
+
+```http
+PUT http://localhost:3001/user-api/alfresco/documents/content?id={id}&name=file.pdf
+Authorization: Bearer {{alfresco_access_token}}
+Content-Type: application/pdf
+```
+
+หมายเหตุ: endpoint นี้อัปเดตเฉพาะ content/เวอร์ชัน ไม่เปลี่ยนชื่อไฟล์ ถ้าต้องเปลี่ยนชื่อให้เรียก PATCH แยก
+
+## Step 10: ลบไฟล์
+
+```http
+DELETE http://localhost:3001/user-api/alfresco/documents?id={id}
+Authorization: Bearer {{alfresco_access_token}}
+```
+
 ---
 
-# 13. สรุป Endpoint ทั้งหมด
+# 15. สรุป Endpoint ทั้งหมด
 
 | Method | Endpoint | ต้องแนบ token | ส่งค่าแบบไหน | ใช้ทำอะไร |
 |---|---|---|---|---|
@@ -1270,12 +1362,15 @@ Content-Type: application/json
 | `GET` | `/user-api/alfresco/documents` | ต้อง | Query string | list เอกสาร |
 | `GET` | `/user-api/alfresco/documents/search` | ต้อง | Query string | ค้นหาเอกสาร |
 | `GET` | `/user-api/alfresco/documents/location?id=...` | ต้อง | Query string | ดูตำแหน่งไฟล์ |
+| `GET` | `/user-api/alfresco/documents/versions?id=...` | ต้อง | Query string | ดูประวัติเวอร์ชันไฟล์ |
 | `PATCH` | `/user-api/alfresco/documents?id=...` | ต้อง | Query string + JSON body | แก้ไขชื่อไฟล์ |
 | `GET` | `/user-api/alfresco/documents/{id}/content` | ต้อง | Path param + query string | เปิด/ดาวน์โหลดไฟล์ |
+| `PUT` | `/user-api/alfresco/documents/content?id=...&name=...` | ต้อง | Query string + raw binary | แทนที่เนื้อหาไฟล์เป็นเวอร์ชันใหม่ |
+| `DELETE` | `/user-api/alfresco/documents?id=...` | ต้อง | Query string | ลบไฟล์ |
 
 ---
 
-# 13.1 สรุป Backend ไปเรียก Alfresco เส้นไหน
+# 15.1 สรุป Backend ไปเรียก Alfresco เส้นไหน
 
 | Endpoint ของโปรเจกต์ | ข้างในไปเรียก Alfresco | ประเภท |
 |---|---|---|
@@ -1288,6 +1383,8 @@ Content-Type: application/json
 | `GET /user-api/alfresco/documents/location?id=...` | ลอง `GET /alfresco/api/-default-/public/alfresco/versions/1/nodes/{nodeId}?include=path` ก่อน ถ้าไม่ได้ใช้ `GET /alfresco/api/-default-/public/cmis/versions/1.1/browser/root?cmisselector=parents&objectId={id}` | REST v1 fallback CMIS |
 | `PATCH /user-api/alfresco/documents?id=...` | `POST /alfresco/api/-default-/public/cmis/versions/1.1/browser/root` พร้อม `cmisaction=update` และ `propertyId[0]=cmis:name` | CMIS |
 | `GET /user-api/alfresco/documents/{id}/content` | `GET /alfresco/api/-default-/public/cmis/versions/1.1/browser/root?cmisselector=content&objectId={id}` | CMIS |
+| `GET /user-api/alfresco/documents/versions?id=...` | `GET /alfresco/api/-default-/public/cmis/versions/1.1/browser/root?cmisselector=versions&objectId={id}` | CMIS |
+| `PUT /user-api/alfresco/documents/content?id=...` | `POST /alfresco/service/api/upload` พร้อม `updatenoderef=workspace://SpacesStore/{nodeId}` | Web Script |
 
 หมายเหตุ: `{path}` และ `{folderPath}` จะถูก encode ทีละ segment ในโค้ด `backend/src/utils/cmis.js`
 
@@ -1295,7 +1392,7 @@ Content-Type: application/json
 
 ---
 
-# 14. Audit Log
+# 16. Audit Log
 
 ระบบบันทึก audit log เป็น JSON Lines ที่:
 
@@ -1334,6 +1431,7 @@ Action ที่บันทึก:
 | `LIST_DOCUMENTS` | เรียก `GET /user-api/alfresco/documents` แบบ list |
 | `SEARCH_DOCUMENTS` | เรียก search หรือ list documents พร้อม q/exactName |
 | `VIEW_FILE_DETAIL` | เรียก endpoint ดูรายละเอียด/ตำแหน่งไฟล์ |
+| `VIEW_FILE_VERSIONS` | เรียก endpoint ดูประวัติเวอร์ชันไฟล์ |
 | `OPEN_FILE` | เปิดไฟล์ผ่าน content endpoint |
 | `DOWNLOAD_FILE` | เรียก content endpoint พร้อม `action=download` |
 | `RENAME_FILE` | เรียก PATCH แก้ชื่อไฟล์ |
@@ -1342,7 +1440,7 @@ Action ที่บันทึก:
 
 ---
 
-# 15. Error ที่พบบ่อย
+# 17. Error ที่พบบ่อย
 
 ## ไม่ได้แนบ token
 
@@ -1417,7 +1515,7 @@ Content-Type: application/json
 
 ---
 
-# 16. หมายเหตุเรื่องความปลอดภัย
+# 18. หมายเหตุเรื่องความปลอดภัย
 
 ไม่ควรส่ง `username/password` ไปกับ API เอกสารทุกครั้ง
 

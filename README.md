@@ -212,6 +212,16 @@ route เก่าที่ยังรองรับ:
 GET /user-api/alfresco/documents/:id/location
 Authorization: Bearer <accessToken>
 ```
+### Document versions
+
+```http
+GET /user-api/alfresco/documents/versions?id=DOCUMENT_ID
+GET /user-api/alfresco/documents/:id/versions
+Authorization: Bearer <accessToken>
+```
+
+ใช้ดึงประวัติเวอร์ชันของเอกสารผ่าน CMIS `cmisselector=versions` โดย response มี `count` และ `versions` แต่ละรายการจะมีข้อมูลเช่น `versionLabel`, `lastModificationDate`, `lastModifiedBy`, `size`, `checkinComment`, `isLatestVersion` และ `downloadUrl` สำหรับเปิด/ดาวน์โหลดเวอร์ชันนั้น
+
 
 ### Update document name
 
@@ -250,7 +260,7 @@ Authorization: Bearer <accessToken>
 
 ### Replace file content
 
-ส่งไฟล์ใหม่แบบ `Body -> binary`
+ส่งไฟล์ใหม่แบบ `Body -> binary` เพื่อแทนที่เนื้อหา/สร้าง version ใหม่ของเอกสารเดิม โดยไม่เปลี่ยนชื่อเอกสาร
 
 ```http
 PUT /user-api/alfresco/documents/content?id=DOCUMENT_ID&name=file.pdf
@@ -258,6 +268,8 @@ PUT /user-api/alfresco/documents/:id/content?name=file.pdf
 Authorization: Bearer <accessToken>
 Content-Type: application/pdf
 ```
+
+หมายเหตุ: สำหรับ Alfresco รุ่นนี้ backend ใช้ legacy webscript `POST /alfresco/service/api/upload` พร้อม `updatenoderef` ในการแทนที่ content เพราะ REST v1 `/nodes/{id}/content` ไม่พร้อมใช้งานใน server นี้
 
 ### Open file
 
@@ -300,6 +312,7 @@ Action ที่เก็บ:
 - `LIST_DOCUMENTS`
 - `SEARCH_DOCUMENTS`
 - `VIEW_FILE_DETAIL`
+- `VIEW_FILE_VERSIONS`
 - `OPEN_FILE`
 - `DOWNLOAD_FILE`
 - `RENAME_FILE`

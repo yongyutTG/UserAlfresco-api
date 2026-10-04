@@ -420,6 +420,20 @@ async function getDocumentLocation(id, headers) {
     source: null,
   };
 }
+//ฟังชันดึงประวัติเวอร์ชันของเอกสาร
+async function getDocumentVersions(id, headers) {
+  if (!id || id === "DOCUMENT_ID") {
+    throw createBadRequest("Missing real document id");
+  }
+
+  const versions = await alfrescoRepo.getDocumentVersions(id, headers);
+
+  return {
+    id,
+    count: versions.length,
+    versions,
+  };
+}
 //ฟังชันแก้ไขเอกสาร ปัจจุบันใช้สำหรับ rename เอกสารผ่าน CMIS updateProperties
 async function updateDocument(id, payload = {}, headers) {
   if (!id || id === "DOCUMENT_ID") {
@@ -499,6 +513,7 @@ module.exports = {
   getHealth,
   findDocumentByExactNameInTree,
   getDocumentLocation,
+  getDocumentVersions,
   listFolderTree,
   listFolders,
   listOrSearchDocuments,

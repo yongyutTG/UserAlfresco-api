@@ -24,6 +24,7 @@ function buildBaseAuditEvent(req, action, details = {}) {
     userAgent: req.get("user-agent") || null,
     status: details.status || "SUCCESS",
     message: details.message || null,
+    errorDetail: details.errorDetail || null,
   };
 }
 

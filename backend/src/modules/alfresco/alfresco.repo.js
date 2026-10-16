@@ -77,6 +77,24 @@ async function updateDocumentProperties(objectId, properties, headers) {
 
   return getObjectById(objectId, headers);
 }
+//ฟังชันสร้าง folder ใหม่ใต้ parent folder ผ่าน CMIS Browser Binding
+async function createFolder(parentPath, folder, headers) {
+  const form = new URLSearchParams();
+  form.set("cmisaction", "createFolder");
+  form.set("propertyId[0]", "cmis:objectTypeId");
+  form.set("propertyValue[0]", "cmis:folder");
+  form.set("propertyId[1]", "cmis:name");
+  form.set("propertyValue[1]", folder.name);
+
+  const result = await alfrescoHttp.post(cmisUrlForPath(parentPath), form, {
+    headers: {
+      ...headers,
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
+  });
+
+  return mapCmisObject(result.data);
+}
 //ฟังชันสร้างเอกสารใหม่ใน folder ผ่าน CMIS Browser Binding
 async function createDocument(folderPath, file, headers) {
   const form = new FormData();
@@ -122,6 +140,29 @@ async function setDocumentContentStream(objectId, file, headers) {
 
   await alfrescoHttp.post(`${config.alfrescoHost}/alfresco/service/api/upload`, form, {
     headers,
+  });
+
+  return getObjectById(objectId, headers);
+}
+//ฟังชันย้าย object ไปยัง target folder ผ่าน CMIS Browser Binding
+async function moveObject(objectId, targetFolderPath, headers) {
+  const targetFolder = await getObjectByPath(targetFolderPath, headers);
+  const parents = await getObjectParents(objectId, headers);
+  const sourceFolderId = parents.find((parent) => parent.id)?.id;
+  const form = new URLSearchParams();
+  form.set("cmisaction", "move");
+  form.set("objectId", objectId);
+  form.set("targetFolderId", targetFolder.id);
+
+  if (sourceFolderId) {
+    form.set("sourceFolderId", sourceFolderId);
+  }
+
+  await alfrescoHttp.post(`${config.alfrescoCmis}/root`, form, {
+    headers: {
+      ...headers,
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
   });
 
   return getObjectById(objectId, headers);
@@ -200,6 +241,7 @@ function safeFileName(name) {
 }
 
 module.exports = {
+  createFolder,
   createDocument,
   deleteDocument,
   getChildrenByPath,
@@ -213,5 +255,6 @@ module.exports = {
   queryDocuments,
   safeFileName,
   setDocumentContentStream,
+  moveObject,
   updateDocumentProperties,
 };

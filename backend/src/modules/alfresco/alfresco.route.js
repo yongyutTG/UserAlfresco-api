@@ -8,12 +8,17 @@ const rawFileBody = express.raw({
 });
 
 router.get("/folders", alfrescoController.listFolders);
+router.post("/folders", alfrescoController.createFolder);
 router.get("/folders/tree", alfrescoController.listFolderTree);
+router.post("/folders/bulk-move", alfrescoController.bulkMoveFolders);
 router.post("/documents", rawFileBody, alfrescoController.createDocument);
 router.get("/documents", alfrescoController.listDocuments);
 router.get("/documents/search", alfrescoController.searchDocuments);
 router.get("/documents/location", alfrescoController.getDocumentLocation);
 router.get("/documents/versions", alfrescoController.getDocumentVersions);
+router.post("/documents/bulk-delete", alfrescoController.bulkDeleteDocuments);
+router.post("/documents/bulk-download", alfrescoController.bulkDownloadDocuments);
+router.post("/documents/bulk-move", alfrescoController.bulkMoveDocuments);
 router.patch("/documents", alfrescoController.updateDocument);
 router.delete("/documents", alfrescoController.deleteDocument);
 router.put("/documents/content", rawFileBody, alfrescoController.replaceDocumentContent);

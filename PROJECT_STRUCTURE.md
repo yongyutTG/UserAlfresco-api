@@ -256,7 +256,7 @@ Alfresco ของระบบนี้เป็น Community 4.2 ดังน�
 
 ใช้สำหรับงาน folder/file/document เช่น list folder, search file, เปิดไฟล์ หรือ download file
 
-Base URL:
+Base URL:api หลัก
 
 ```text
 http://172.17.1.21/alfresco/api/-default-/public/cmis/versions/1.1/browser
@@ -265,21 +265,21 @@ Authorization: Basic base64(username:password)
 
 
 ตัวอย่าง endpoint:
-
+นำ api หลัก
 ```text
-GET /root?cmisselector=children
+GET http://172.17.1.21/alfresco/api/-default-/public/cmis/versions/1.1/browser/root?cmisselector=children
 ```
 
 ดู root folder ที่ user มีสิทธิ์เห็น
 
 ```text
-GET /root/Sites/tg-saving/documentLibrary?cmisselector=children
+GET http://172.17.1.21/alfresco/api/-default-/public/cmis/versions/1.1/browser/root/Sites/tg-saving/documentLibrary?cmisselector=children
 ```
 
 ดู folder/file ภายใต้ path ที่กำหนด
 
 ```text
-GET /root?cmisselector=query&q=SELECT * FROM cmis:document
+GET http://172.17.1.21/alfresco/api/-default-/public/cmis/versions/1.1/browser/root?cmisselector=query&q=SELECT * FROM cmis:document
 ```
 
 ค้นหาเอกสารด้วย CMIS query

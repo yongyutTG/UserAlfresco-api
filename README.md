@@ -161,6 +161,21 @@ GET /user-api/alfresco/folders?path=/Sites/tg-saving/documentLibrary
 Authorization: Bearer <accessToken>
 ```
 
+### Create folder
+
+```http
+POST /user-api/alfresco/folders
+Authorization: Bearer <accessToken>
+Content-Type: application/json
+
+{
+  "parentPath": "/Sites/tg-saving/documentLibrary/การเงิน",
+  "name": "folder-new"
+}
+```
+
+สิทธิ์สร้าง folder อิงจาก Alfresco ถ้า user ไม่มีสิทธิ์สร้างใต้ parent folder นั้น Alfresco จะตอบ error กลับมา
+
 ### List folder tree
 
 ```http
@@ -258,6 +273,61 @@ Authorization: Bearer <accessToken>
 
 แนะนำแบบ query string `?id=DOCUMENT_ID` เพื่อรองรับ id เต็มของ Alfresco เช่น `uuid;1.0`
 
+### Bulk download files
+
+`POST /user-api/alfresco/documents/bulk-download` accepts JSON `documents: [{ id, name }]`
+with Bearer authentication and returns a ZIP after verifying access to every file.
+See [Bulk download API](docs/BULK_DOWNLOAD.md) for limits, permissions and Postman usage.
+
+### Bulk delete files
+
+```http
+POST /user-api/alfresco/documents/bulk-delete
+Authorization: Bearer <accessToken>
+Content-Type: application/json
+
+{
+  "documents": [
+    { "id": "DOCUMENT_ID_1" },
+    { "id": "DOCUMENT_ID_2" }
+  ]
+}
+```
+
+Response จะสรุปผลรายไฟล์ เพราะบางไฟล์อาจลบสำเร็จ บางไฟล์อาจล้มเหลวจากสิทธิ์ใน Alfresco
+
+### Bulk move files
+
+```http
+POST /user-api/alfresco/documents/bulk-move
+Authorization: Bearer <accessToken>
+Content-Type: application/json
+
+{
+  "targetFolderPath": "/Sites/tg-saving/documentLibrary/ปลายทาง",
+  "documents": [
+    { "id": "DOCUMENT_ID_1" },
+    { "id": "DOCUMENT_ID_2" }
+  ]
+}
+```
+
+### Bulk move folders
+
+```http
+POST /user-api/alfresco/folders/bulk-move
+Authorization: Bearer <accessToken>
+Content-Type: application/json
+
+{
+  "targetFolderPath": "/Sites/tg-saving/documentLibrary/ปลายทาง",
+  "folders": [
+    { "id": "FOLDER_ID_1", "name": "folder1" },
+    { "id": "FOLDER_ID_2", "name": "folder2" }
+  ]
+}
+```
+
 ### Replace file content
 
 ส่งไฟล์ใหม่แบบ `Body -> binary` เพื่อแทนที่เนื้อหา/สร้าง version ใหม่ของเอกสารเดิม โดยไม่เปลี่ยนชื่อเอกสาร
@@ -309,6 +379,7 @@ Action ที่เก็บ:
 - `LOGOUT`
 - `LIST_FOLDERS`
 - `LIST_FOLDER_TREE`
+- `CREATE_FOLDER`
 - `LIST_DOCUMENTS`
 - `SEARCH_DOCUMENTS`
 - `VIEW_FILE_DETAIL`
@@ -319,6 +390,9 @@ Action ที่เก็บ:
 - `UPLOAD_FILE`
 - `DELETE_FILE`
 - `REPLACE_FILE_CONTENT`
+- `BULK_DELETE_FILES`
+- `BULK_MOVE_FILES`
+- `BULK_MOVE_FOLDERS`
 
 หมายเหตุ: `LOGOUT` จะเกิดเฉพาะกรณี client เรียก `POST /auth/logout` พร้อม Bearer token ก่อนล้าง token ฝั่ง browser ถ้าปิด browser หรือปิด tab เฉย ๆ backend จะไม่รู้เหตุการณ์ logout
 

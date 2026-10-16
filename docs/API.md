@@ -1535,3 +1535,109 @@ Content-Type: application/json
 
 
 
+ 
+---
+
+# Create folder
+
+## Endpoint
+
+```http
+POST /user-api/alfresco/folders
+```
+
+สร้าง folder ใหม่ใต้ parent folder ที่ระบุ โดยสิทธิ์จริงอิงจาก Alfresco user ที่ login อยู่
+
+```http
+Authorization: Bearer ACCESS_TOKEN
+Content-Type: application/json
+```
+
+```json
+{
+  "parentPath": "/Sites/tg-saving/documentLibrary/การเงิน",
+  "name": "folder-new"
+}
+```
+
+backend จะเรียก CMIS Browser Binding `cmisaction=createFolder` ไปที่ Alfresco ถ้า user ไม่มีสิทธิ์สร้าง folder จะได้ error จาก Alfresco กลับมา
+
+---
+
+# Bulk download
+
+See [Bulk download API](BULK_DOWNLOAD.md) for `POST /user-api/alfresco/documents/bulk-download`.
+It uses Bearer authentication, JSON `documents: [{ id, name }]` and returns `application/zip`.
+
+# Bulk delete / move
+
+ทุกเส้นต้องแนบ:
+
+```http
+Authorization: Bearer ACCESS_TOKEN
+Content-Type: application/json
+```
+
+สิทธิ์จริงอิงจาก Alfresco เหมือน API รายไฟล์ ถ้าบางรายการไม่มีสิทธิ์ ระบบจะคืนผลลัพธ์รายรายการเพื่อให้รู้ว่าอันไหนสำเร็จหรือ failed
+
+## Bulk delete files
+
+```http
+POST /user-api/alfresco/documents/bulk-delete
+```
+
+```json
+{
+  "documents": [
+    { "id": "DOCUMENT_ID_1" },
+    { "id": "DOCUMENT_ID_2" }
+  ]
+}
+```
+
+## Bulk move files
+
+```http
+POST /user-api/alfresco/documents/bulk-move
+```
+
+```json
+{
+  "targetFolderPath": "/Sites/tg-saving/documentLibrary/ปลายทาง",
+  "documents": [
+    { "id": "DOCUMENT_ID_1" },
+    { "id": "DOCUMENT_ID_2" }
+  ]
+}
+```
+
+## Bulk move folders
+
+```http
+POST /user-api/alfresco/folders/bulk-move
+```
+
+```json
+{
+  "targetFolderPath": "/Sites/tg-saving/documentLibrary/ปลายทาง",
+  "folders": [
+    { "id": "FOLDER_ID_1", "name": "folder1" },
+    { "id": "FOLDER_ID_2", "name": "folder2" }
+  ]
+}
+```
+
+## ตัวอย่าง Response
+
+```json
+{
+  "targetFolderPath": "/Sites/tg-saving/documentLibrary/ปลายทาง",
+  "success": 1,
+  "failed": 1,
+  "results": [
+    { "id": "DOCUMENT_ID_1", "name": "file1.pdf", "ok": true, "moved": true },
+    { "id": "DOCUMENT_ID_2", "name": "file2.pdf", "ok": false, "error": "Permission denied" }
+  ],
+  "username": "Administrator"
+}
+```

@@ -11,6 +11,7 @@ function allowConfiguredCors(req, res, next) {
     res.setHeader("Vary", "Origin");
     res.setHeader("Access-Control-Allow-Methods", "GET,POST,PUT,PATCH,DELETE,OPTIONS");
     res.setHeader("Access-Control-Allow-Headers", "Content-Type,Authorization,Accept");
+    res.setHeader("Access-Control-Expose-Headers", "Content-Disposition");
   }
 
   if (req.method === "OPTIONS") {

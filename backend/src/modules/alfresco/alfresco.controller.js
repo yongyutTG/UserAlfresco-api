@@ -1,6 +1,33 @@
 const alfrescoService = require("./alfresco.service");
 const { handleError } = require("../../middlewares/errorHandler");
 const { audit } = require("../../utils/auditLogger");
+const { prepareDownload } = require("./bulkDownload.service");
+
+async function bulkDownloadDocuments(req, res) {
+  const abort = new AbortController();
+  const onClose = () => { if (!res.writableFinished) abort.abort(); };
+  res.on("close", onClose);
+  let prepared;
+  try {
+    prepared = await prepareDownload(req.body, req.alfrescoAuthHeaders, abort.signal);
+    res.setHeader("Cache-Control", "no-store");
+    res.type("application/zip");
+    await new Promise((resolve, reject) => {
+      res.download(prepared.zipPath, prepared.name, (error) => error ? reject(error) : resolve());
+    });
+    for (const document of req.body.documents) {
+      audit(req, "DOWNLOAD_FILE", { documentId: document.id, fileName: document.name, message: "File sent in bulk ZIP" });
+    }
+    audit(req, "BULK_DOWNLOAD_FILES", { message: `ZIP sent: ${req.body.documents.length} files` });
+  } catch (error) {
+    audit(req, "BULK_DOWNLOAD_FILES", { status: "FAILED", message: error.message });
+    if (!res.headersSent && !res.destroyed) handleError(res, "Cannot download documents", error);
+    else if (!res.destroyed) res.destroy();
+  } finally {
+    res.off("close", onClose);
+    if (prepared) await prepared.cleanup();
+  }
+}
 
 function getUploadedFileFromRequest(req) {
   return {
@@ -36,6 +63,29 @@ async function listFolders(req, res) {
       message: err.message,
     });
     handleError(res, "ไม่สามารถรายการโฟลเดอร์จาก Alfresco ได้", err);
+  }
+}
+//ฟังชันสร้าง folder ใหม่ใน Alfresco โดยสิทธิ์อิงจาก user ที่ login อยู่
+async function createFolder(req, res) {
+  try {
+    const result = await alfrescoService.createFolder(req.body, req.alfrescoAuthHeaders);
+    audit(req, "CREATE_FOLDER", {
+      folderPath: result.parentPath,
+      fileName: result.folderName,
+      message: "Create folder success",
+    });
+    res.status(201).json({
+      ...result,
+      username: req.alfrescoUsername,
+    });
+  } catch (err) {
+    audit(req, "CREATE_FOLDER", {
+      folderPath: req.body?.parentPath || req.body?.path,
+      fileName: req.body?.name || req.body?.folderName,
+      status: "FAILED",
+      message: err.message,
+    });
+    handleError(res, "ไม่สามารถสร้างโฟลเดอร์ใน Alfresco ได้", err);
   }
 }
 //ฟังชันดึงโฟลเดอร์ย่อยทุกชั้นจาก path หลัก
@@ -248,6 +298,67 @@ async function deleteDocument(req, res) {
     handleError(res, "ไม่สามารถลบเอกสารใน Alfresco ได้", err);
   }
 }
+//ฟังชันลบไฟล์หลายไฟล์
+async function bulkDeleteDocuments(req, res) {
+  try {
+    const result = await alfrescoService.bulkDeleteDocuments(req.body, req.alfrescoAuthHeaders);
+    audit(req, "BULK_DELETE_FILES", {
+      message: `Bulk delete files success: ${result.success} success, ${result.failed} failed`,
+    });
+    res.json({
+      ...result,
+      username: req.alfrescoUsername,
+    });
+  } catch (err) {
+    audit(req, "BULK_DELETE_FILES", {
+      status: "FAILED",
+      message: err.message,
+    });
+    handleError(res, "ไม่สามารถลบเอกสารหลายไฟล์ใน Alfresco ได้", err);
+  }
+}
+//ฟังชันย้ายไฟล์หลายไฟล์
+async function bulkMoveDocuments(req, res) {
+  try {
+    const result = await alfrescoService.bulkMoveDocuments(req.body, req.alfrescoAuthHeaders);
+    audit(req, "BULK_MOVE_FILES", {
+      folderPath: result.targetFolderPath,
+      message: `Bulk move files success: ${result.success} success, ${result.failed} failed`,
+    });
+    res.json({
+      ...result,
+      username: req.alfrescoUsername,
+    });
+  } catch (err) {
+    audit(req, "BULK_MOVE_FILES", {
+      folderPath: req.body?.targetFolderPath || req.body?.targetPath,
+      status: "FAILED",
+      message: err.message,
+    });
+    handleError(res, "ไม่สามารถย้ายเอกสารหลายไฟล์ใน Alfresco ได้", err);
+  }
+}
+//ฟังชันย้าย folder หลาย folder
+async function bulkMoveFolders(req, res) {
+  try {
+    const result = await alfrescoService.bulkMoveFolders(req.body, req.alfrescoAuthHeaders);
+    audit(req, "BULK_MOVE_FOLDERS", {
+      folderPath: result.targetFolderPath,
+      message: `Bulk move folders success: ${result.success} success, ${result.failed} failed`,
+    });
+    res.json({
+      ...result,
+      username: req.alfrescoUsername,
+    });
+  } catch (err) {
+    audit(req, "BULK_MOVE_FOLDERS", {
+      folderPath: req.body?.targetFolderPath || req.body?.targetPath,
+      status: "FAILED",
+      message: err.message,
+    });
+    handleError(res, "ไม่สามารถย้ายโฟลเดอร์หลายรายการใน Alfresco ได้", err);
+  }
+}
 //ฟังชันแทนที่ content ของไฟล์เดิม
 async function replaceDocumentContent(req, res) {
   const documentId = req.params.id || req.query.id;
@@ -296,6 +407,11 @@ async function streamDocumentContent(req, res) {
 }
 
 module.exports = {
+  bulkDownloadDocuments,
+  bulkDeleteDocuments,
+  bulkMoveDocuments,
+  bulkMoveFolders,
+  createFolder,
   createDocument,
   deleteDocument,
   health,

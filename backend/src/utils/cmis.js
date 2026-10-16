@@ -43,6 +43,7 @@ function mapCmisObject(item, contentRoutePrefix = "/user-api/alfresco") {
   const id = getProp(props, "cmis:objectId");
   const allowRename = type === "cmis:document" && hasAllowableAction(item, "canUpdateProperties");
   const permissions = {
+    canDownload: type === "cmis:document" && hasAllowableAction(item, "canGetContentStream"),
     canView: type === "cmis:document",
     canRename: allowRename,
     canEditProperties: type === "cmis:document" && hasAllowableAction(item, "canUpdateProperties"),

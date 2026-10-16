@@ -127,6 +127,20 @@ function normalizeDocumentName(name) {
   return normalizedName;
 }
 
+function normalizeFolderName(name) {
+  const normalizedName = String(name || "").trim();
+
+  if (!normalizedName) {
+    throw createBadRequest("Missing folder name");
+  }
+
+  if (/[\\/]/.test(normalizedName)) {
+    throw createBadRequest("Folder name must not contain path separators");
+  }
+
+  return normalizedName;
+}
+
 function normalizeUploadedFile(file = {}) {
   const buffer = Buffer.isBuffer(file.buffer) ? file.buffer : null;
   const name = normalizeDocumentName(file.name || file.fileName);
@@ -153,6 +167,20 @@ async function getHealth() {
 async function listFolders(folderPath, headers) {
   const items = await alfrescoRepo.getChildrenByPath(folderPath || "/", headers);
   return items.filter((item) => item.isFolder);
+}
+
+//ฟังชันสร้าง folder ใหม่ใต้ parent path ที่ระบุ
+async function createFolder(payload = {}, headers) {
+  const parentPath = payload.parentPath || payload.path || "/Sites/tg-saving/documentLibrary";
+  const name = normalizeFolderName(payload.name || payload.folderName);
+  const createdFolder = await alfrescoRepo.createFolder(parentPath, { name }, headers);
+
+  return {
+    created: true,
+    parentPath,
+    folderName: name,
+    folder: createdFolder,
+  };
 }
 
 async function collectFolderTreeByChildren(rootPath, headers, maxDepth) {
@@ -476,6 +504,13 @@ async function deleteDocument(id, headers) {
     deleted: true,
   };
 }
+function summarizeBulkResults(results) {
+  return {
+    success: results.filter((item) => item.ok).length,
+    failed: results.filter((item) => !item.ok).length,
+    results,
+  };
+}
 //ฟังชันแทนที่ content ของเอกสารเดิม
 async function replaceDocumentContent(id, file, headers) {
   if (!id || id === "DOCUMENT_ID") {
@@ -507,7 +542,129 @@ async function streamDocumentContent(res, id, name, headers) {
   result.data.pipe(res);
 }
 
+function normalizeBulkObjects(items, fieldName) {
+  if (!Array.isArray(items) || items.length === 0) {
+    throw createBadRequest(`Missing ${fieldName}`);
+  }
+
+  return items.map((item) => ({
+    id: String(item?.id || "").trim(),
+    name: item?.name || item?.fileName || item?.folderName || null,
+  }));
+}
+
+async function bulkMoveDocuments(payload, headers) {
+  const targetFolderPath = payload?.targetFolderPath;
+  if (!targetFolderPath) throw createBadRequest("Missing targetFolderPath");
+
+  const documents = normalizeBulkObjects(payload?.documents, "documents");
+
+  const results = [];
+  for (const document of documents) {
+    try {
+      if (!document.id || document.id === "DOCUMENT_ID") {
+        throw createBadRequest("Missing real document id");
+      }
+
+      const movedDocument = await alfrescoRepo.moveObject(document.id, targetFolderPath, headers);
+      results.push({
+        ...document,
+        ok: true,
+        moved: true,
+        targetFolderPath,
+        document: movedDocument,
+      });
+    } catch (error) {
+      results.push({
+        ...document,
+        ok: false,
+        targetFolderPath,
+        error: error.response?.data?.message || error.message,
+      });
+    }
+  }
+
+  return {
+    targetFolderPath,
+    ...summarizeBulkResults(results),
+    results,
+  };
+}
+
+async function bulkMoveFolders(payload, headers) {
+  const targetFolderPath = payload?.targetFolderPath;
+  if (!targetFolderPath) throw createBadRequest("Missing targetFolderPath");
+
+  const folders = normalizeBulkObjects(payload?.folders, "folders");
+
+  const results = [];
+  for (const folder of folders) {
+    try {
+      if (!folder.id || folder.id === "FOLDER_ID") {
+        throw createBadRequest("Missing real folder id");
+      }
+
+      const movedFolder = await alfrescoRepo.moveObject(folder.id, targetFolderPath, headers);
+      results.push({
+        ...folder,
+        ok: true,
+        moved: true,
+        targetFolderPath,
+        folder: movedFolder,
+      });
+    } catch (error) {
+      results.push({
+        ...folder,
+        ok: false,
+        targetFolderPath,
+        error: error.response?.data?.message || error.message,
+      });
+    }
+  }
+
+  return {
+    targetFolderPath,
+    ...summarizeBulkResults(results),
+    results,
+  };
+}
+
+async function bulkDeleteDocuments(payload, headers) {
+  const documents = normalizeBulkObjects(payload?.documents, "documents");
+
+  const results = [];
+  for (const document of documents) {
+    try {
+      if (!document.id || document.id === "DOCUMENT_ID") {
+        throw createBadRequest("Missing real document id");
+      }
+
+      await alfrescoRepo.deleteDocument(document.id, headers);
+      results.push({
+        ...document,
+        ok: true,
+        deleted: true,
+      });
+    } catch (error) {
+      results.push({
+        ...document,
+        ok: false,
+        error: error.response?.data?.message || error.message,
+      });
+    }
+  }
+
+  return {
+    ...summarizeBulkResults(results),
+    results,
+  };
+}
+
 module.exports = {
+  bulkDeleteDocuments,
+  bulkMoveDocuments,
+  bulkMoveFolders,
+  createFolder,
   createDocument,
   deleteDocument,
   getHealth,

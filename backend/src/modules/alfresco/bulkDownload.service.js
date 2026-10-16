@@ -6,6 +6,7 @@ const { Transform } = require("node:stream");
 const { pipeline } = require("node:stream/promises");
 const archiver = require("archiver");
 const repo = require("./alfresco.repo");
+const { getAuditFolderPath } = require("./documentAudit.service");
 
 const MAX_FILES = 100;
 const MAX_BYTES = 500 * 1024 * 1024;
@@ -36,6 +37,7 @@ async function prepareDownload(payload, headers, signal) {
     let bytes = 0;
     const names = new Set();
     const entries = [];
+    const auditDocuments = [];
     for (let i = 0; i < documents.length; i++) {
       signal?.throwIfAborted();
       let source;
@@ -53,6 +55,11 @@ async function prepareDownload(payload, headers, signal) {
         },
       });
       await pipeline(source, limiter, fs.createWriteStream(filename, { mode: 0o600 }), { signal });
+      auditDocuments.push({
+        id: documents[i].id,
+        name: metadata[i].name || documents[i].name,
+        folderPath: await getAuditFolderPath(documents[i].id, headers),
+      });
       let name = (documents[i].name || metadata[i].name || "document")
         .replace(/[\\/\x00-\x1f\x7f:<>"|?*]/g, "_").replace(/[. ]+$/g, "").slice(0, 180) || "document";
       const extension = path.extname(name);
@@ -72,7 +79,7 @@ async function prepareDownload(payload, headers, signal) {
       timeZone: "Asia/Bangkok", year: "numeric", month: "2-digit", day: "2-digit",
       hour: "2-digit", minute: "2-digit", second: "2-digit", hourCycle: "h23",
     }).format(new Date()).replace(/[-:]/g, "").replace(" ", "_");
-    return { zipPath, name: `documents_${timestamp}.zip`, cleanup };
+    return { zipPath, name: `documents_${timestamp}.zip`, cleanup, auditDocuments };
   } catch (error) {
     await cleanup();
     throw error;

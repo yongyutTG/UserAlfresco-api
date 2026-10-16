@@ -39,5 +39,10 @@ Send the JSON body with Bearer authentication, check response.ok, then save the
 response Blob. Frontend checks do not replace backend authorization.
 
 Audit: `BULK_DOWNLOAD_FILES` and per-file `DOWNLOAD_FILE` on successful response
-completion; failed requests use `BULK_DOWNLOAD_FILES` with FAILED. Completion means
+completion. Per-file `folderPath` comes from CMIS parents with the user's credentials;
+lookup failure leaves it null without failing the download. File names in the audit
+use Alfresco metadata. The ZIP summary has a null folderPath because files can come
+from different folders. Individual OPEN_FILE/DOWNLOAD_FILE requests also resolve
+their folderPath through CMIS parents. These lookups add one bounded request per file.
+Failed requests use `BULK_DOWNLOAD_FILES` with FAILED. Completion means
 the server sent the response, not proof the user saved it to disk.

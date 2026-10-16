@@ -27,6 +27,11 @@ test("bulk-download endpoint requires a Bearer session", async () => {
 
 test("bulk download validation, permissions, ZIP and upstream errors", async (t) => {
   const headers = { Authorization: "Basic test-only" };
+  t.mock.method(repo, "getObjectParents", async (id, auth) => {
+    assert.equal(auth, headers);
+    if (id === "two") throw new Error("Parent lookup timed out");
+    return [{ path: "/Sites/example/documentLibrary/finance" }];
+  });
   let calls = [];
   t.mock.method(repo, "getObjectById", async (id, auth) => {
     assert.equal(auth, headers);
@@ -46,6 +51,10 @@ test("bulk download validation, permissions, ZIP and upstream errors", async (t)
     { id: "one", name: "../same.pdf" }, { id: "two", name: "../same.pdf" },
   ] }, headers);
   try {
+    assert.deepEqual(result.auditDocuments, [
+      { id: "one", name: "test.pdf", folderPath: "/Sites/example/documentLibrary/finance" },
+      { id: "two", name: "test.pdf", folderPath: null },
+    ]);
     const zip = await fs.readFile(result.zipPath);
     assert.equal(zip.readUInt32LE(0), 0x04034b50);
     const names = [];

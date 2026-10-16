@@ -16,7 +16,9 @@ function buildBaseAuditEvent(req, action, details = {}) {
     action,
     documentId: details.documentId || req.params?.id || req.query?.id || null,
     fileName: details.fileName || req.query?.name || req.body?.name || null,
-    folderPath: details.folderPath || req.query?.folderPath || req.query?.path || null,
+    folderPath: Object.prototype.hasOwnProperty.call(details, "folderPath")
+      ? details.folderPath
+      : req.query?.folderPath || req.query?.path || null,
     searchText: details.searchText ?? req.query?.q ?? req.query?.keyword ?? req.query?.exactName ?? null,
     requestPath: req.originalUrl,
     method: req.method,

@@ -2,6 +2,7 @@ const alfrescoService = require("./alfresco.service");
 const { handleError } = require("../../middlewares/errorHandler");
 const { audit } = require("../../utils/auditLogger");
 const { prepareDownload } = require("./bulkDownload.service");
+const { getAuditFolderPath } = require("./documentAudit.service");
 
 async function bulkDownloadDocuments(req, res) {
   const abort = new AbortController();
@@ -15,12 +16,12 @@ async function bulkDownloadDocuments(req, res) {
     await new Promise((resolve, reject) => {
       res.download(prepared.zipPath, prepared.name, (error) => error ? reject(error) : resolve());
     });
-    for (const document of req.body.documents) {
-      audit(req, "DOWNLOAD_FILE", { documentId: document.id, fileName: document.name, message: "File sent in bulk ZIP" });
+    for (const document of prepared.auditDocuments) {
+      audit(req, "DOWNLOAD_FILE", { documentId: document.id, fileName: document.name, folderPath: document.folderPath, message: "File sent in bulk ZIP" });
     }
-    audit(req, "BULK_DOWNLOAD_FILES", { message: `ZIP sent: ${req.body.documents.length} files` });
+    audit(req, "BULK_DOWNLOAD_FILES", { folderPath: null, message: `ZIP sent: ${req.body.documents.length} files` });
   } catch (error) {
-    audit(req, "BULK_DOWNLOAD_FILES", { status: "FAILED", message: error.message });
+    audit(req, "BULK_DOWNLOAD_FILES", { folderPath: null, status: "FAILED", message: error.message });
     if (!res.headersSent && !res.destroyed) handleError(res, "Cannot download documents", error);
     else if (!res.destroyed) res.destroy();
   } finally {
@@ -388,8 +389,10 @@ async function replaceDocumentContent(req, res) {
 //ฟังชันสตรีมเนื้อหาเอกสารจาก Alfresco
 async function streamDocumentContent(req, res) {
   const action = req.query.action === "download" ? "DOWNLOAD_FILE" : "OPEN_FILE";
+  const folderPath = await getAuditFolderPath(req.params.id, req.alfrescoAuthHeaders);
   try {
     audit(req, action, {
+      folderPath,
       documentId: req.params.id,
       fileName: req.query.name,
       message: `${action === "DOWNLOAD_FILE" ? "Download" : "Open"} file requested`,
@@ -397,6 +400,7 @@ async function streamDocumentContent(req, res) {
     await alfrescoService.streamDocumentContent(res, req.params.id, req.query.name, req.alfrescoAuthHeaders);
   } catch (err) {
     audit(req, action, {
+      folderPath,
       documentId: req.params.id,
       fileName: req.query.name,
       status: "FAILED",

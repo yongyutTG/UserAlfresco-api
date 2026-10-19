@@ -2,6 +2,7 @@ const express = require("express");
 const path = require("path");
 const authRoutes = require("./modules/auth/auth.route");
 const alfrescoRoutes = require("./modules/alfresco/alfresco.route");
+const systemRoutes = require("./modules/system/system.route");
 const alfrescoController = require("./modules/alfresco/alfresco.controller");
 const config = require("./config/env");
 const { requireUserSession } = require("./middlewares/auth");
@@ -31,6 +32,10 @@ app.use("/auth", authRoutes);
 // ทุก endpoint ใต้ /user-api/alfresco/* ต้องผ่าน session middleware ก่อน
 // middleware ตรวจ Authorization: Bearer <token>
 app.use("/user-api/alfresco", apiRateLimiter, requireUserSession, alfrescoRoutes);
+app.use("/user-api/system", (req, res, next) => {
+  res.setHeader("Cache-Control", "no-store");
+  next();
+}, apiRateLimiter, requireUserSession, systemRoutes);
 
 app.use(notFound);
 

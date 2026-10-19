@@ -33,6 +33,7 @@ function numberFromEnv(key, defaultValue) {
 const config = {
   nodeEnv: process.env.NODE_ENV || "development",
   port: numberFromEnv("PORT", 3001),
+  serverLabel: String(process.env.SERVER_LABEL || "").trim() || "UserAlfresco-api",
   alfrescoHost: process.env.ALFRESCO_HOST,
   userSessionTtlMs: numberFromEnv("USER_SESSION_TTL_MS", 28800000),
   alfrescoRequestTimeoutMs: numberFromEnv("ALFRESCO_REQUEST_TIMEOUT_MS", 30000),

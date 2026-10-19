@@ -8,7 +8,10 @@ const rawFileBody = express.raw({
 });
 
 router.get("/folders", alfrescoController.listFolders);
+router.get("/permissions", alfrescoController.objectPermissions);
 router.post("/folders", alfrescoController.createFolder);
+router.delete("/folders/:id", alfrescoController.deleteFolder);
+router.patch("/folders/:id", alfrescoController.updateFolder);
 router.get("/folders/tree", alfrescoController.listFolderTree);
 router.post("/folders/bulk-move", alfrescoController.bulkMoveFolders);
 router.post("/documents", rawFileBody, alfrescoController.createDocument);

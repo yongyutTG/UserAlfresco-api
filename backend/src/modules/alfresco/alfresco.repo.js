@@ -240,7 +240,35 @@ function safeFileName(name) {
   return path.basename(name || "download");
 }
 
+async function folderHasChildren(objectId, headers) {
+  const result = await alfrescoHttp.get(`${config.alfrescoCmis}/root`, {
+    headers, params: { cmisselector: "children", objectId, maxItems: 1, skipCount: 0 },
+  });
+  return Boolean(result.data.objects?.length || result.data.hasMoreItems || result.data.numItems > 0);
+}
+
+async function deleteFolderObject(objectId, recursive, headers) {
+  const form = new URLSearchParams({
+    cmisaction: recursive ? "deleteTree" : "delete", objectId,
+    allVersions: "true",
+  });
+  if (recursive) {
+    form.set("unfileObjects", "delete");
+    form.set("continueOnFailure", "true");
+  }
+  const result = await alfrescoHttp.post(`${config.alfrescoCmis}/root`, form, {
+    headers: { ...headers, "Content-Type": "application/x-www-form-urlencoded" },
+  });
+  const data = result.data;
+  if (!data) return [];
+  const failed = Array.isArray(data) ? data : data.ids || data.failedToDelete;
+  if (Array.isArray(failed) && failed.every((id) => typeof id === "string")) return failed;
+  throw Object.assign(new Error("Unexpected delete response; refresh before retrying"), { statusCode: 502 });
+}
+
 module.exports = {
+  folderHasChildren,
+  deleteFolderObject,
   createFolder,
   createDocument,
   deleteDocument,

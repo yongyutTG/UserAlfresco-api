@@ -1,5 +1,12 @@
 # UserAlfresco API
 
+Per-file/folder permissions: [GET /user-api/alfresco/permissions?id=OBJECT_ID](docs/OBJECT_PERMISSIONS.md)
+with Bearer authentication.
+
+System information: [GET /user-api/system/info](docs/SYSTEM_INFO.md) returns the
+API server label and Bangkok time; requires Bearer authentication. Configure
+`SERVER_LABEL` in `.env` (default: `UserAlfresco-api`).
+
 เอกสาร flow แบบ Step 1, 2, 3: [FLOW_STEPS.md](FLOW_STEPS.md)
 โครงสร้างโปรเจคแบบ backend modules: [PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md)
 เอกสาร API แบบละเอียด: [docs/API.md](docs/API.md)
@@ -272,6 +279,15 @@ Authorization: Bearer <accessToken>
 ```
 
 แนะนำแบบ query string `?id=DOCUMENT_ID` เพื่อรองรับ id เต็มของ Alfresco เช่น `uuid;1.0`
+
+### Delete folder
+
+Rename/move: `PATCH /user-api/alfresco/folders/:id` with JSON `name` or
+`targetFolderPath`. See [Update folder API](docs/UPDATE_FOLDER.md).
+
+`DELETE /user-api/alfresco/folders/:id` deletes an empty folder. Use `?recursive=true`
+and JSON `{ "confirmName": "exact folder name" }` to delete its contents too.
+See [Delete folder API](docs/DELETE_FOLDER.md) for permissions and partial results.
 
 ### Bulk download files
 

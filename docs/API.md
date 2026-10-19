@@ -1,5 +1,14 @@
 # UserAlfresco API Endpoint Guide
 
+Object permissions: [GET /user-api/alfresco/permissions?id=OBJECT_ID](OBJECT_PERMISSIONS.md)
+returns current per-object permissions using the Bearer user's Alfresco account.
+
+## System info
+
+`GET /user-api/system/info` requires a Bearer token and returns `serverName`,
+`serverTime` (+07:00) and `timezone` with `Cache-Control: no-store`.
+See [System info](SYSTEM_INFO.md) for configuration and frontend sync guidance.
+
 คู่มือนี้อธิบาย API ของโปรเจกต์ `UserAlfresco-api` ว่าแต่ละเส้นใช้ method อะไร ต้องส่ง parameter ชื่ออะไร ส่งไว้ตรงไหน และต้องแนบ token หรือไม่
 
 Base URL:
@@ -1563,6 +1572,13 @@ Content-Type: application/json
 backend จะเรียก CMIS Browser Binding `cmisaction=createFolder` ไปที่ Alfresco ถ้า user ไม่มีสิทธิ์สร้าง folder จะได้ error จาก Alfresco กลับมา
 
 ---
+
+# Delete folder
+
+For rename/move use [Update folder API](UPDATE_FOLDER.md): `PATCH /user-api/alfresco/folders/:id`.
+
+See [Delete folder API](DELETE_FOLDER.md) for empty and recursive deletion,
+confirmation, permissions and HTTP 207 partial results.
 
 # Bulk download
 

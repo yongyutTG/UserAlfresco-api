@@ -43,11 +43,15 @@ function mapCmisObject(item, contentRoutePrefix = "/user-api/alfresco") {
   const id = getProp(props, "cmis:objectId");
   const allowRename = type === "cmis:document" && hasAllowableAction(item, "canUpdateProperties");
   const permissions = {
+    canCreateFolder: type === "cmis:folder" && hasAllowableAction(item, "canCreateFolder"),
+    canUpload: type === "cmis:folder" && hasAllowableAction(item, "canCreateDocument"),
     canDownload: type === "cmis:document" && hasAllowableAction(item, "canGetContentStream"),
     canView: type === "cmis:document",
-    canRename: allowRename,
+    canRename: (type === "cmis:document" || type === "cmis:folder") && hasAllowableAction(item, "canUpdateProperties"),
+    canMove: hasAllowableAction(item, "canMoveObject"),
     canEditProperties: type === "cmis:document" && hasAllowableAction(item, "canUpdateProperties"),
-    canDelete: type === "cmis:document" && hasAllowableAction(item, "canDeleteObject"),
+    canDelete: (type === "cmis:document" || type === "cmis:folder") && hasAllowableAction(item, "canDeleteObject"),
+    canDeleteTree: type === "cmis:folder" && hasAllowableAction(item, "canDeleteTree"),
     canUpdateContent: type === "cmis:document" && (
       hasAllowableAction(item, "canSetContentStream") ||
       hasAllowableAction(item, "canDeleteContentStream")

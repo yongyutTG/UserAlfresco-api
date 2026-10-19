@@ -3,6 +3,50 @@ const { handleError } = require("../../middlewares/errorHandler");
 const { audit } = require("../../utils/auditLogger");
 const { prepareDownload } = require("./bulkDownload.service");
 const { getAuditFolderPath } = require("./documentAudit.service");
+const folderDeleteService = require("./folderDelete.service");
+const folderUpdateService = require("./folderUpdate.service");
+const permissionsService = require("./permissions.service");
+
+async function objectPermissions(req, res) {
+  res.setHeader("Cache-Control", "no-store");
+  try {
+    res.json(await permissionsService.getObjectPermissions(req.query.id, req.alfrescoAuthHeaders));
+  } catch (error) {
+    handleError(res, "Cannot get object permissions from Alfresco", error);
+  }
+}
+
+async function updateFolder(req, res) {
+  try {
+    const result = await folderUpdateService.updateFolder(req.params.id, req.body, req.alfrescoAuthHeaders);
+    audit(req, result.action, { documentId: result.id, fileName: result.folder.name,
+      folderPath: result.previousPath, message: `Folder updated: ${result.folder.path || result.folder.name}` });
+    res.json(result);
+  } catch (error) {
+    audit(req, req.body?.targetFolderPath !== undefined ? "MOVE_FOLDER" : "RENAME_FOLDER", {
+      documentId: req.params.id, status: "FAILED", message: error.message,
+    });
+    handleError(res, "Cannot update folder; refresh before retrying", error);
+  }
+}
+
+async function deleteFolder(req, res) {
+  try {
+    const result = await folderDeleteService.deleteFolder(req.params.id, req.query.recursive, req.body, req.alfrescoAuthHeaders);
+    audit(req, result.recursive ? "DELETE_FOLDER_TREE" : "DELETE_FOLDER", {
+      documentId: result.id, fileName: result.name, folderPath: result.folderPath,
+      status: result.partial ? "PARTIAL" : "SUCCESS",
+      message: result.partial ? "Some objects could not be deleted" : "Folder deleted",
+      errorDetail: result.partial ? { failedToDelete: result.failedToDelete } : null,
+    });
+    res.status(result.partial ? 207 : 200).json(result);
+  } catch (error) {
+    audit(req, req.query.recursive === "true" ? "DELETE_FOLDER_TREE" : "DELETE_FOLDER", {
+      documentId: req.params.id, folderPath: null, status: "FAILED", message: error.message,
+    });
+    handleError(res, "Cannot delete folder; refresh before retrying", error);
+  }
+}
 
 async function bulkDownloadDocuments(req, res) {
   const abort = new AbortController();
@@ -411,6 +455,9 @@ async function streamDocumentContent(req, res) {
 }
 
 module.exports = {
+  objectPermissions,
+  updateFolder,
+  deleteFolder,
   bulkDownloadDocuments,
   bulkDeleteDocuments,
   bulkMoveDocuments,

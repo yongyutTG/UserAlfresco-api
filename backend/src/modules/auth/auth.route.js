@@ -5,6 +5,7 @@ const { requireUserSession } = require("../../middlewares/auth");
 const { createRateLimiter } = require("../../middlewares/rateLimit");
 
 const router = express.Router();
+
 const loginRateLimiter = createRateLimiter({
   windowMs: config.loginRateLimitWindowMs,
   maxRequests: config.loginRateLimitMax,

@@ -1,5 +1,7 @@
 # UserAlfresco API Endpoint Guide
 
+Multipart upload: [POST /documents and POST /documents/bulk-upload](UPLOAD_FILES.md).
+
 Object permissions: [GET /user-api/alfresco/permissions?id=OBJECT_ID](OBJECT_PERMISSIONS.md)
 returns current per-object permissions using the Bearer user's Alfresco account.
 

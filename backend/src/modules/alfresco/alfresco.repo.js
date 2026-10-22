@@ -99,6 +99,7 @@ async function createFolder(parentPath, folder, headers) {
 async function createDocument(folderPath, file, headers) {
   const form = new FormData();
   form.set("cmisaction", "createDocument");
+  form.set("includeAllowableActions", "true");
   form.set("propertyId[0]", "cmis:objectTypeId");
   form.set("propertyValue[0]", "cmis:document");
   form.set("propertyId[1]", "cmis:name");

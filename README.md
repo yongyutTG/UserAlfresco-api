@@ -1,5 +1,8 @@
 # UserAlfresco API
 
+Uploads: [Single and multiple file upload guide](docs/UPLOAD_FILES.md), including
+Postman form-data fields and per-file results.
+
 Per-file/folder permissions: [GET /user-api/alfresco/permissions?id=OBJECT_ID](docs/OBJECT_PERMISSIONS.md)
 with Bearer authentication.
 

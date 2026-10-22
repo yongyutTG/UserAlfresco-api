@@ -481,7 +481,18 @@ async function updateDocument(id, payload = {}, headers) {
 async function createDocument(folderPath, file, headers) {
   const targetFolderPath = folderPath || "/Sites/tg-saving/documentLibrary";
   const uploadedFile = normalizeUploadedFile(file);
-  const createdObject = await alfrescoRepo.createDocument(targetFolderPath, uploadedFile, headers);
+  let createdObject = await alfrescoRepo.createDocument(targetFolderPath, uploadedFile, headers);
+  let permissionsPending = false;
+  // Creation responses may omit allowableActions. Read the saved object using
+  // the same user before returning it for immediate rendering in the browser.
+  if (createdObject.id) {
+    try {
+      createdObject = await alfrescoRepo.getObjectById(createdObject.id, headers);
+    } catch (_) {
+      // The upload already succeeded: do not encourage a duplicate upload.
+      permissionsPending = true;
+    }
+  }
 
   return {
     created: true,
@@ -489,6 +500,7 @@ async function createDocument(folderPath, file, headers) {
     fileName: uploadedFile.name,
     size: uploadedFile.size,
     document: createdObject,
+    permissionsPending,
   };
 }
 //ฟังชันลบเอกสารตาม id

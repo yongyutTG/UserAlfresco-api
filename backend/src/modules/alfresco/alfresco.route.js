@@ -1,5 +1,6 @@
 const express = require("express");
 const alfrescoController = require("./alfresco.controller");
+const { multipartUpload } = require("./upload.controller");
 
 const router = express.Router();
 const rawFileBody = express.raw({
@@ -14,7 +15,8 @@ router.delete("/folders/:id", alfrescoController.deleteFolder);
 router.patch("/folders/:id", alfrescoController.updateFolder);
 router.get("/folders/tree", alfrescoController.listFolderTree);
 router.post("/folders/bulk-move", alfrescoController.bulkMoveFolders);
-router.post("/documents", rawFileBody, alfrescoController.createDocument);
+router.post("/documents", multipartUpload(true), rawFileBody, alfrescoController.createDocument);
+router.post("/documents/bulk-upload", multipartUpload());
 router.get("/documents", alfrescoController.listDocuments);
 router.get("/documents/search", alfrescoController.searchDocuments);
 router.get("/documents/location", alfrescoController.getDocumentLocation);

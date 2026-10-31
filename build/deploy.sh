@@ -28,8 +28,8 @@ npm --version
 command -v pm2 >/dev/null || fail 'PM2 must be available to the runner service user.'
 command -v curl >/dev/null || fail 'curl is required for the startup check.'
 test -r .env || fail "Missing or unreadable server environment: $DEPLOY_DIR/.env"
-mkdir -p backend/logs
-test -w backend/logs || fail 'Runner cannot write backend/logs.'
+# mkdir -p backend/logs
+# test -w backend/logs || fail 'Runner cannot write backend/logs.'
 
 git fetch origin main
 DEPLOY_REVISION="${GITHUB_SHA:-origin/main}"

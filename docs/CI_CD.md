@@ -2,7 +2,7 @@
 
 ใช้รูปแบบเดียวกับ Alfresco: GitHub Actions ตรวจ PR และ push เข้า `main`
 จากนั้น deploy เฉพาะ push เข้า `main` ที่ผ่าน CI โดยใช้ self-hosted Linux runner
-label `alfresco-production` งาน deploy ของ API ใช้ concurrency group แยกจาก frontend
+label `UserAlfresco-api` งาน deploy ของ API ใช้ concurrency group แยกจาก frontend
 
 ## CI
 
@@ -14,7 +14,7 @@ label `alfresco-production` งาน deploy ของ API ใช้ concurrency
 
 ## เตรียม server ครั้งแรก
 
-1. ให้ repository นี้เข้าถึง runner ที่มี labels `self-hosted`, `Linux`, `alfresco-production`
+1. ให้ repository นี้เข้าถึง runner ที่มี labels `self-hosted`, `Linux`, `UserAlfresco-api`
    หาก runner เดิมลงทะเบียนเฉพาะ repository Alfresco จะไม่สามารถรับงานของ API ได้
    ต้องลงทะเบียน runner ของ repository นี้ด้วย service/directory แยกกัน หรือใช้ organization runner
    ที่อนุญาตทั้งสอง repositories

@@ -42,7 +42,7 @@ jobs:
     name: Deploy after tests pass
     needs: test
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    runs-on: [self-hosted, Linux, alfresco-production]
+    runs-on: [self-hosted, Linux, UserAlfresco-api]
     concurrency:
       group: useralfresco-api-production
       cancel-in-progress: false

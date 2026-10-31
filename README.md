@@ -1,5 +1,7 @@
 # UserAlfresco API
 
+CI/CD: [GitHub Actions และการเตรียม production runner](docs/CI_CD.md)
+
 Uploads: [Single and multiple file upload guide](docs/UPLOAD_FILES.md), including
 Postman form-data fields and per-file results.
 

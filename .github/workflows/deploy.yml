@@ -1,0 +1,57 @@
+name: CI-CD UserAlfresco API Deploy
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Test Node.js API
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - name: Install dependencies
+        working-directory: backend
+        run: npm ci
+      - name: Check JavaScript syntax
+        run: |
+          find backend/src backend/test -name '*.js' -print0 | xargs -0 -n1 node --check
+          node --check backend/server.js
+          node --check ecosystem.config.js
+      - name: Check deployment script syntax
+        run: bash -n build/deploy.sh
+      - name: Run API regression tests
+        working-directory: backend
+        run: npm test
+
+  deploy:
+    name: Deploy after tests pass
+    needs: test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: [self-hosted, Linux, alfresco-production]
+    concurrency:
+      group: useralfresco-api-production
+      cancel-in-progress: false
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Deploy
+        shell: bash
+        env:
+          DEPLOY_DIR: ${{ vars.USERALFRESCO_DEPLOY_DIR }}
+          PM2_HOME: ${{ vars.USERALFRESCO_PM2_HOME }}
+        run: bash "$GITHUB_WORKSPACE/build/deploy.sh"

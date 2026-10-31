@@ -4,6 +4,7 @@
   "description": "UserAlfresco API Gateway using Alfresco permissions",
   "main": "server.js",
   "scripts": {
+    "test": "node --test",
     "start": "node server.js",
     "dev": "nodemon"
   },

@@ -16,7 +16,11 @@ case "$(git remote get-url origin)" in
   https://github.com/yongyutTG/UserAlfresco-api.git|git@github.com:yongyutTG/UserAlfresco-api.git) ;;
   *) fail 'Unexpected origin URL; expected yongyutTG/UserAlfresco-api.git.' ;;
 esac
-test -z "$(git status --porcelain --untracked-files=no)" || fail 'Tracked server files have local changes. Preserve them before deploying (including legacy tracked audit logs; see docs/CI_CD.md).'
+TRACKED_CHANGES="$(git status --porcelain --untracked-files=no)"
+if [[ -n "$TRACKED_CHANGES" ]]; then
+  printf 'Tracked changes in %s:\n%s\n' "$DEPLOY_DIR" "$TRACKED_CHANGES"
+  fail 'Tracked server files have local changes. Preserve them before deploying (including legacy tracked audit logs; see docs/CI_CD.md).'
+fi
 
 echo 'Checking Node.js, npm, PM2 and server environment'
 node -e 'if (process.versions.node.split(".")[0] !== "22") { console.error("Node.js 22.x is required"); process.exit(1); }'

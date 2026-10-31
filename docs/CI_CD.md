@@ -18,7 +18,10 @@ label `UserAlfresco-api` งาน deploy ของ API ใช้ concurrency gr
    หาก runner เดิมลงทะเบียนเฉพาะ repository Alfresco จะไม่สามารถรับงานของ API ได้
    ต้องลงทะเบียน runner ของ repository นี้ด้วย service/directory แยกกัน หรือใช้ organization runner
    ที่อนุญาตทั้งสอง repositories
-2. ติดตั้ง Node.js 22, npm, Git, curl และ PM2 ให้ user ที่รัน runner เรียกได้จาก service PATH
+2. ติดตั้ง Git, curl และ PM2 ให้ user ที่รัน runner เรียกได้จาก service PATH
+   งาน deploy ใช้ `actions/setup-node` เตรียม Node.js 22 และ npm เช่นเดียวกับ CI
+   runner ต้องดาวน์โหลด Node.js ได้และเขียน tool cache ได้
+   หากเรียก `build/deploy.sh` เองนอก Actions ต้องเตรียม Node.js 22 ใน PATH ก่อน
    runner ต้องใช้ user เดียวกับ PM2 ที่ดูแล API และเขียน deployment directory ได้
    หากใช้ nvm ต้องตั้ง PATH ใน runner service ให้ถูกต้องด้วย
 3. Clone `https://github.com/yongyutTG/UserAlfresco-api.git` ที่
@@ -61,6 +64,7 @@ production checkout เดิมต้องเก็บ log ก่อนอั�
 
 ติดตั้ง production dependencies ด้วย `npm ci --omit=dev` แล้ว restart เฉพาะ
 `UserAlfresco-api` โดยตั้ง `NODE_ENV=production` ผ่าน ecosystem config
+และกำหนด interpreter เป็น Node.js ที่ใช้ในงาน deploy โดยตรง
 ตรวจ HTTP ที่ `http://127.0.0.1:PORT/` ภายในช่วง retry ก่อนรายงานว่าสำเร็จ
 การตรวจนี้ยืนยันเฉพาะ HTTP startup ไม่ยืนยันการ login หรือการเชื่อมต่อ Alfresco
 

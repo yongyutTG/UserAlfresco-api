@@ -49,6 +49,10 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Setup Node.js for deployment
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
       - name: Deploy
         shell: bash
         env:

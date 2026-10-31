@@ -28,8 +28,8 @@ npm --version
 command -v pm2 >/dev/null || fail 'PM2 must be available to the runner service user.'
 command -v curl >/dev/null || fail 'curl is required for the startup check.'
 test -r .env || fail "Missing or unreadable server environment: $DEPLOY_DIR/.env"
-# mkdir -p backend/logs
-# test -w backend/logs || fail 'Runner cannot write backend/logs.'
+mkdir -p backend/logs
+test -w backend/logs || fail 'Runner cannot write backend/logs.'
 
 git fetch origin main
 DEPLOY_REVISION="${GITHUB_SHA:-origin/main}"
@@ -42,7 +42,7 @@ fi
 echo "Deploying revision: $DEPLOY_REVISION"
 git reset --hard "$DEPLOY_REVISION"
 npm --prefix backend ci --omit=dev
-pm2 startOrRestart ecosystem.config.js --only UserAlfresco-api --env production --update-env
+pm2 startOrRestart ecosystem.config.js --only UserAlfresco-api --env production --update-env --interpreter "$(command -v node)"
 
 # /health depends on Alfresco credentials; / checks local HTTP startup only.
 PORT_VALUE="$(node -e 'const c = require("./backend/src/config/env"); process.stdout.write(String(c.port));' | tail -n 1)"

@@ -162,12 +162,14 @@ async function listDocuments(req, res) {
   const q = req.query.q || req.query.keyword || req.query.name;
   const exactName = req.query.exactName || req.query.fileName;
   try {
-    const options = { maxItems: req.query.maxItems, skipCount: req.query.skipCount, exactName, sortBy: req.query.sortBy, sortDirection: req.query.sortDirection };
+    const options = { maxItems: req.query.maxItems, skipCount: req.query.skipCount, exactName, sortBy: req.query.sortBy, sortDirection: req.query.sortDirection, createdFrom: req.query.createdFrom, createdTo: req.query.createdTo, scope: req.query.scope };
     const result = await alfrescoService.listOrSearchDocuments(folderPath, q, req.alfrescoAuthHeaders, options);
 
     audit(req, q || exactName ? "SEARCH_DOCUMENTS" : "LIST_DOCUMENTS", {
       folderPath,
       searchText: q || exactName || null,
+      createdFrom: req.query.createdFrom || null,
+      createdTo: req.query.createdTo || null,
       message: `${q || exactName ? "Search" : "List"} documents success: ${result.count} item(s)`,
     });
 
@@ -191,25 +193,27 @@ async function searchDocuments(req, res) {
   const q = req.query.q || req.query.keyword || req.query.name;
   const exactName = req.query.exactName || req.query.fileName;
   try {
-    if (!q && !exactName) {
+    if (!q && !exactName && !req.query.createdFrom && !req.query.createdTo) {
       audit(req, "SEARCH_DOCUMENTS", {
         folderPath,
         searchText: null,
         status: "FAILED",
-        message: "Missing search parameter: q or exactName is required",
+        message: "Missing search parameter: q, exactName or upload date range is required",
       });
       return res.status(400).json({
-        message: "Missing search parameter: q or exactName is required",
+        message: "Missing search parameter: q, exactName or upload date range is required",
         status: 400,
       });
     }
 
-    const options = { maxItems: req.query.maxItems, skipCount: req.query.skipCount, exactName, sortBy: req.query.sortBy, sortDirection: req.query.sortDirection };
+    const options = { maxItems: req.query.maxItems, skipCount: req.query.skipCount, exactName, sortBy: req.query.sortBy, sortDirection: req.query.sortDirection, createdFrom: req.query.createdFrom, createdTo: req.query.createdTo, scope: req.query.scope };
     const result = await alfrescoService.searchDocuments(folderPath, q, req.alfrescoAuthHeaders, options);
 
     audit(req, "SEARCH_DOCUMENTS", {
       folderPath,
       searchText: q || exactName,
+      createdFrom: req.query.createdFrom || null,
+      createdTo: req.query.createdTo || null,
       message: `Search documents success: ${result.count} item(s)`,
     });
 

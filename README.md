@@ -208,6 +208,15 @@ Authorization: Bearer <accessToken>
 
 รองรับการเรียงด้วย `sortBy=name|created` และ `sortDirection=asc|desc` เช่นดูวันที่สร้างล่าสุดให้ส่ง `sortBy=created&sortDirection=desc`
 
+รองรับการกรองวันที่อัปโหลด/วันที่สร้างด้วย `createdFrom` และ `createdTo` รูปแบบ `YYYY-MM-DD` โดย `createdTo` รวมเอกสารตลอดทั้งวันนั้น และใช้เขตเวลา `Asia/Bangkok`:
+
+พารามิเตอร์ `scope` เลือกขอบเขตได้เป็น `tree` (ค่าเริ่มต้น รวมโฟลเดอร์ย่อย) หรือ `folder` (เฉพาะโฟลเดอร์ที่ระบุ)
+
+```http
+GET /user-api/alfresco/documents?folderPath=/Sites/tg-saving/documentLibrary/การเงิน&createdFrom=2026-11-01&createdTo=2026-11-03&maxItems=20&skipCount=0
+Authorization: Bearer <accessToken>
+```
+
 รายการเอกสารจะมี field `allowRename` จาก CMIS `canUpdateProperties` เพื่อให้ frontend แสดง/ซ่อนไอคอนแก้ไขชื่อไฟล์ตามสิทธิ์ของ user และมี `permissions` สำหรับแสดงสถานะสิทธิ์ให้ผู้ใช้เห็น เช่น `canRename`, `canUpdateContent`, `canDelete`
 
 ### Search documents
@@ -218,6 +227,13 @@ Authorization: Bearer <accessToken>
 ```
 
 ผลค้นหาจะมี field `allowRename` และ `permissions` เช่นเดียวกับ list documents
+
+ช่วงวันที่สามารถใช้เดี่ยว ๆ หรือใช้ร่วมกับ `q`/`exactName` และจะถูกกรองก่อน pagination:
+
+```http
+GET /user-api/alfresco/documents/search?folderPath=/Sites/tg-saving/documentLibrary/การเงิน&q=026277&createdFrom=2026-11-01&createdTo=2026-11-03
+Authorization: Bearer <accessToken>
+```
 
 ค้นหาแบบชื่อไฟล์ตรงตัว:
 

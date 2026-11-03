@@ -35,6 +35,43 @@ function getDocumentSortClause(options = {}) {
   return field ? ` ORDER BY ${field} ${direction}` : "";
 }
 
+function parseBangkokDateBoundary(value, endExclusive = false) {
+  const normalized = String(value || "").trim();
+  if (!normalized) return null;
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(normalized);
+  if (!match) throw createBadRequest("Upload date must use YYYY-MM-DD format");
+  const [, yearText, monthText, dayText] = match;
+  const year = Number(yearText);
+  const month = Number(monthText);
+  const day = Number(dayText);
+  const validationDate = new Date(Date.UTC(year, month - 1, day));
+  if (validationDate.getUTCFullYear() !== year || validationDate.getUTCMonth() !== month - 1 || validationDate.getUTCDate() !== day) {
+    throw createBadRequest("Invalid upload date");
+  }
+  const bangkokOffsetMs = 7 * 60 * 60 * 1000;
+  const endOffsetMs = endExclusive ? 24 * 60 * 60 * 1000 : 0;
+  return new Date(Date.UTC(year, month - 1, day) - bangkokOffsetMs + endOffsetMs).toISOString();
+}
+
+function getDocumentDateClause(options = {}) {
+  const createdFrom = parseBangkokDateBoundary(options.createdFrom);
+  const createdBefore = parseBangkokDateBoundary(options.createdTo, true);
+  if (createdFrom && createdBefore && createdFrom >= createdBefore) {
+    throw createBadRequest("Upload start date must not be after end date");
+  }
+  return [
+    createdFrom ? ` AND cmis:creationDate >= TIMESTAMP '${createdFrom}'` : "",
+    createdBefore ? ` AND cmis:creationDate < TIMESTAMP '${createdBefore}'` : "",
+  ].join("");
+}
+
+function getDocumentFolderPredicate(folderId, options = {}) {
+  const operator = String(options.scope || "tree").trim().toLowerCase() === "folder"
+    ? "IN_FOLDER"
+    : "IN_TREE";
+  return `${operator}('${escapeCmisString(folderId)}')`;
+}
+
 function normalizeRepositoryPath(repositoryPath) {
   if (!repositoryPath) return null;
   return String(repositoryPath).replace(/^\/Company Home(?=\/|$)/, "") || "/";
@@ -288,7 +325,7 @@ async function listFolderTree(folderPath, headers, options = {}) {
 async function queryDocumentsInTree(folderPath, headers, options = {}) {
   const folder = await alfrescoRepo.getObjectByPath(folderPath, headers);
   const { maxItems, skipCount } = getListPaging(options);
-  const query = `SELECT * FROM cmis:document WHERE IN_TREE('${escapeCmisString(folder.id)}')${getDocumentSortClause(options)}`;
+  const query = `SELECT * FROM cmis:document WHERE ${getDocumentFolderPredicate(folder.id, options)}${getDocumentDateClause(options)}${getDocumentSortClause(options)}`;
   const data = await alfrescoRepo.queryDocuments(query, headers, { maxItems, skipCount });
   const files = (data.results || []).map((item) => mapCmisObject(item));
 
@@ -315,9 +352,10 @@ async function searchDocumentsInTree(folderPath, searchText, headers, options = 
 //ฟังชันสร้าง query สำหรับค้นหาเอกสารใน Alfresco
   const query = [
     "SELECT * FROM cmis:document",
-    `WHERE IN_TREE('${escapeCmisString(folder.id)}')`,
+    `WHERE ${getDocumentFolderPredicate(folder.id, options)}`,
+    getDocumentDateClause(options).trim(),
     `AND cmis:name LIKE '%${escapeCmisLike(normalizedSearchText)}%'`,
-  ].join(" ") + getDocumentSortClause(options);
+  ].filter(Boolean).join(" ") + getDocumentSortClause(options);
   //ฟังชันเรียกใช้ alfrescoRepo.queryDocuments
   const data = await alfrescoRepo.queryDocuments(query, headers, { searchAllVersions: false, maxItems, skipCount });
   const files = (data.results || []).map((item) => mapCmisObject(item));
@@ -351,9 +389,10 @@ async function findDocumentByExactNameInTree(folderPath, exactName, headers, opt
     .join(" OR ");
   const query = [
     "SELECT * FROM cmis:document",
-    `WHERE IN_TREE('${escapeCmisString(folder.id)}')`,
+    `WHERE ${getDocumentFolderPredicate(folder.id, options)}`,
+    getDocumentDateClause(options).trim(),
     `AND (${exactNameFilter})`,
-  ].join(" ") + getDocumentSortClause(options);
+  ].filter(Boolean).join(" ") + getDocumentSortClause(options);
 
   const data = await alfrescoRepo.queryDocuments(query, headers, { searchAllVersions: false, maxItems, skipCount });
   const files = (data.results || []).map((item) => mapCmisObject(item));
@@ -394,8 +433,10 @@ async function searchDocuments(folderPath, q, headers, options = {}) {
 
   if (options.exactName && String(options.exactName).trim()) {
     result = await findDocumentByExactNameInTree(folderPath, options.exactName, headers, options);
-  } else {
+  } else if (q && String(q).trim()) {
     result = await searchDocumentsInTree(folderPath, q, headers, options);
+  } else {
+    result = await queryDocumentsInTree(folderPath, headers, options);
   }
 
   return {
@@ -681,6 +722,8 @@ module.exports = {
   deleteDocument,
   getHealth,
   findDocumentByExactNameInTree,
+  getDocumentDateClause,
+  getDocumentFolderPredicate,
   getDocumentLocation,
   getDocumentVersions,
   listFolderTree,

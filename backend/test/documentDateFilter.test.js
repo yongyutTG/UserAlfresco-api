@@ -1,6 +1,6 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { getDocumentDateClause, getDocumentFolderPredicate } = require("../src/modules/alfresco/alfresco.service");
+const { getDocumentDateClause, getDocumentFolderPredicate, getDocumentSortClause } = require("../src/modules/alfresco/alfresco.service");
 
 test("document upload date range covers complete Bangkok calendar days", () => {
   const clause = getDocumentDateClause({ createdFrom: "2026-11-03", createdTo: "2026-11-03" });
@@ -21,4 +21,11 @@ test("document search scope supports the selected folder or its complete tree", 
   assert.equal(getDocumentFolderPredicate("folder-id"), "IN_TREE('folder-id')");
   assert.equal(getDocumentFolderPredicate("folder-id", { scope: "tree" }), "IN_TREE('folder-id')");
   assert.equal(getDocumentFolderPredicate("folder-id", { scope: "folder" }), "IN_FOLDER('folder-id')");
+});
+
+test("documents can be sorted by the last modification date", () => {
+  assert.equal(
+    getDocumentSortClause({ sortBy: "modified", sortDirection: "desc" }),
+    " ORDER BY cmis:lastModificationDate DESC",
+  );
 });

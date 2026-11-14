@@ -29,6 +29,9 @@ function getDocumentSortClause(options = {}) {
     filename: "cmis:name",
     created: "cmis:creationDate",
     creationdate: "cmis:creationDate",
+    modified: "cmis:lastModificationDate",
+    lastmodified: "cmis:lastModificationDate",
+    lastmodificationdate: "cmis:lastModificationDate",
   };
   const field = sortFieldMap[sortBy];
 
@@ -724,6 +727,7 @@ module.exports = {
   findDocumentByExactNameInTree,
   getDocumentDateClause,
   getDocumentFolderPredicate,
+  getDocumentSortClause,
   getDocumentLocation,
   getDocumentVersions,
   listFolderTree,

@@ -206,7 +206,7 @@ GET /user-api/alfresco/documents?folderPath=/Sites/tg-saving/documentLibrary/ก
 Authorization: Bearer <accessToken>
 ```
 
-รองรับการเรียงด้วย `sortBy=name|created` และ `sortDirection=asc|desc` เช่นดูวันที่สร้างล่าสุดให้ส่ง `sortBy=created&sortDirection=desc`
+รองรับการเรียงด้วย `sortBy=name|created|modified` และ `sortDirection=asc|desc` เช่นดูวันที่แก้ไขล่าสุดให้ส่ง `sortBy=modified&sortDirection=desc`
 
 รองรับการกรองวันที่อัปโหลด/วันที่สร้างด้วย `createdFrom` และ `createdTo` รูปแบบ `YYYY-MM-DD` โดย `createdTo` รวมเอกสารตลอดทั้งวันนั้น และใช้เขตเวลา `Asia/Bangkok`:
 

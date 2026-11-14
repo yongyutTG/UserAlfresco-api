@@ -11,6 +11,8 @@ const { notFound } = require("./middlewares/errorHandler");
 const { createRateLimiter } = require("./middlewares/rateLimit");
 
 const app = express();
+// อยู่หลัง Nginx (127.0.0.1) -> ให้ req.ip ใช้ IP จริงจาก X-Forwarded-For แทน 127.0.0.1
+app.set("trust proxy", "loopback");
 const apiRateLimiter = createRateLimiter({
   windowMs: config.apiRateLimitWindowMs,
   maxRequests: config.apiRateLimitMax,
